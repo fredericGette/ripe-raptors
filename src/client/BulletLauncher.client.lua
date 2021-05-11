@@ -1,7 +1,7 @@
 -- This script handles blaster events on the client-side of the game
 
 -- How fast the projectile moves
-local PROJECTILE_SPEED = 80
+local PROJECTILE_SPEED = 3
 -- How often a projectile can be made on mouse clicks (in seconds)
 local LAUNCH_COOLDOWN = 0.1
  
@@ -51,19 +51,19 @@ local function onLaunch(actionName, inputState, inputObj)
 		local random = math.random()/5 -- Randomise a little the direction of the bullets.
 		direction = direction - playerDirection * playerCFrame.LookVector*random -- Bullets are slighlty aimed at the inside of the world.
 		projectile.CFrame = playerCFrame * CFrame.Angles (0,playerDirection * math.pi/4*random,0) -- Rotate the bullet in accordance to its direction.
-		projectile.Velocity = direction * PROJECTILE_SPEED
+
+		-- Put the projectile in the workspace in order for ApplyImpluse to work.
+		projectile.Parent = game.Workspace
+		projectile:ApplyImpulse(direction * PROJECTILE_SPEED)
 		
 		-- Zero out gravity on the projectile so it doesn't fall through the ground
 		local mass = projectile:GetMass()
 		projectile.VectorForce.Force = Vector3.new(0, 1, 0) * mass * game.Workspace.Gravity
 		
-		-- Put the projectile in the workspace
-		projectile.Parent = game.Workspace
-		
 		bulletSound:Play()
 		
 		-- Tell the server to create a new projectile and send it back to us
-		local serverProjectile = launchProjectile:InvokeServer(projectile.CFrame, projectile.Velocity)
+		local serverProjectile = launchProjectile:InvokeServer(projectile.CFrame, direction * PROJECTILE_SPEED)
 		-- Hide the server copy of the projectile
 		serverProjectile.LocalTransparencyModifier = 1
 		

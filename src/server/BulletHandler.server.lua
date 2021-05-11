@@ -16,13 +16,12 @@ local projectileTemplate = ReplicatedStorage.Bullet
 local currentPing = {}
 
 -- This function is called when the client launches a projectile
-launchProjectile.OnServerInvoke = function(player, cFrame, velocity)
+launchProjectile.OnServerInvoke = function(player, cFrame, impulse)
 	-- Consume a metal
 	player.leaderstats.Metal.Value = player.leaderstats.Metal.Value -1
 	
-	-- Make a new projectile and set the velocity
+	-- Make a new projectile
 	local projectile = projectileTemplate:Clone()
-	projectile.Velocity = velocity
 	
 	-- Calculate where the projectile should be based on the latency
 	-- of the player who launched it
@@ -30,7 +29,7 @@ launchProjectile.OnServerInvoke = function(player, cFrame, velocity)
 	if currentPing[player] then
 		ping = currentPing[player]
 	end
-	local offset = ping * velocity * 1.5
+	local offset = ping * impulse * 1.5
 	projectile.CFrame = cFrame + offset
 	
 	-- Zero out gravity on the projectile so it doesn't fall through the ground
@@ -41,6 +40,9 @@ launchProjectile.OnServerInvoke = function(player, cFrame, velocity)
 	-- Put the projectile in the workspace and make sure the server is the owner
 	projectile.Parent = game.Workspace
 	projectile:SetNetworkOwner(nil)
+
+	-- Apply impulse (the projectile must be in the workspace)
+	projectile:ApplyImpulse(impulse)
 	
 	Debris:AddItem(projectile, 1)
 	
