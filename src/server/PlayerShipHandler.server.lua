@@ -44,13 +44,17 @@ local function onCharacterAdded(character)
 	while not rootPart:IsDescendantOf(workspace) do
 		wait()
 	end
-	-- Gives control of the ship to the player
-	rootPart:SetNetworkOwner(game.Players:GetPlayerFromCharacter(character))
-
+	
 	local anchorPart = character:WaitForChild("Anchor")
+	print(rootPart.Position.y)
+	-- Move the anchor of the character at the center (axis) of the workspace
+	-- But keep the position of the rootPart of the character 
+	anchorPart.WeldConstraint.Enabled = false
+	anchorPart.Position = Vector3.new(workspace.Center.Position.x, anchorPart.Position.y, workspace.Center.Position.z)
+	anchorPart.WeldConstraint.Enabled = true
+	print(rootPart.Position.y)
 	
-	--wait(1) -- waits for player touching the ground
-	
+	-- Add a cylindrical constraint between the anchor of the character and the center of the workspace
 	local cc = Instance.new("CylindricalConstraint", anchorPart)
 	cc.Attachment0 = workspace.Center.Attachment
 	cc.Attachment1 = anchorPart.Attachment
@@ -68,6 +72,9 @@ local function onCharacterAdded(character)
 	cc.AngularVelocity = 0	
 	cc.InclinationAngle = 0
 	
+	-- Gives control of the ship to the player
+	rootPart:SetNetworkOwner(game.Players:GetPlayerFromCharacter(character))
+
 end
  
 -- Called when a player is added to the game

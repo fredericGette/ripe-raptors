@@ -5,9 +5,7 @@
 
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "server": {
-        "$path": "src/server"
-      }
+      "$path": "src/server"
     },
 
     "ReplicatedStorage": {
@@ -21,9 +19,7 @@
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "client": {
-          "$path": "src/client"
-        }
+        "$path": "src/client"
       }
     }
   }
