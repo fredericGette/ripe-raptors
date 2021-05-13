@@ -46,30 +46,25 @@ local function onCharacterAdded(character)
 	end
 	
 	local anchorPart = character:WaitForChild("Anchor")
-	print(rootPart.Position.y)
+
 	-- Move the anchor of the character at the center (axis) of the workspace
 	-- But keep the position of the rootPart of the character 
 	anchorPart.WeldConstraint.Enabled = false
 	anchorPart.Position = Vector3.new(workspace.Center.Position.x, anchorPart.Position.y, workspace.Center.Position.z)
 	anchorPart.WeldConstraint.Enabled = true
-	print(rootPart.Position.y)
 	
 	-- Add a cylindrical constraint between the anchor of the character and the center of the workspace
 	local cc = Instance.new("CylindricalConstraint", anchorPart)
 	cc.Attachment0 = workspace.Center.Attachment
 	cc.Attachment1 = anchorPart.Attachment
 	cc.AngularActuatorType=1 -- Motor
-	cc.AngularVelocity=0 -- horizontal speed
-	cc.MotorMaxAngularAcceleration=1000
-	cc.MotorMaxTorque=100000
-	cc.ActuatorType=1 -- Motor
-	cc.Velocity=0 -- vertical speed
-	cc.MotorMaxAcceleration=1000
-	cc.MotorMaxForce=100000
+	cc.MotorMaxAngularAcceleration=0 -- Stopped
+	cc.MotorMaxTorque=2e30 -- Maximum power
+	cc.AngularVelocity=0 -- stopped
+	cc.ActuatorType=0 -- None
 	cc.LimitsEnabled=true
-	cc.LowerLimit=0 -- min altitude
-	cc.UpperLimit=40 -- max altitude
-	cc.AngularVelocity = 0	
+	cc.LowerLimit=0 -- Min altitude
+	cc.UpperLimit=40 -- Max altitude	
 	cc.InclinationAngle = 0
 	
 	-- Gives control of the ship to the player

@@ -256,7 +256,8 @@ function ControlModule:OnRenderStepped(dt)
 
 		-- User of vehicleConsumedInput is commented out to preserve legacy behavior, in case some game relies on Humanoid.MoveDirection still being set while in a VehicleSeat
 		--if not vehicleConsumedInput then
-			self.moveFunction(Players.LocalPlayer, moveVector, self.cameraRelative)
+			-- ripe-raptors: disable moveFunction because we use a vectorForce instead.
+			--self.moveFunction(Players.LocalPlayer, moveVector, self.cameraRelative)
 		--end
 
 		self.humanoid.Jump = self.activeController:GetIsJumping() or (self.touchJumpController and self.touchJumpController:GetIsJumping())

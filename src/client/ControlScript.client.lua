@@ -39,63 +39,70 @@ explosionSound.SoundId = "http://www.roblox.com/asset/?id=691216625"
 explosionSound.Volume = 2.5
 explosionSound.Looped = false
 
-local moveZ = 0
-local moveX = 0
-
 -- Update player speed and direction on every frame.
 local function onUpdate()	
 	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.Anchor:FindFirstChild("CylindricalConstraint") and player.Character.HumanoidRootPart:FindFirstChild("RootMotor") then
 		
 		local MoveVector = ControlModule:GetMoveVector()
-		local horizontalSpeed = MoveVector.X
-		local verticalSpeed = -MoveVector.Z
-				
-		if (verticalSpeed > 0 and moveZ < 10) or (verticalSpeed < 0 and moveZ > -10)  then
-			moveZ = moveZ+0.1*math.sign(verticalSpeed)
-		end
+		-- directionX [-1...+1]; left=-1; right=+1
+		local directionX = MoveVector.X
+		-- directionY [-1...+1]; down=-1; up=+1
+		local directionY = -MoveVector.Z
+			
+		-- orientationX [-1,+1]; left=-1; right=+1
+		local orientationX = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
 
-		if verticalSpeed == 0 and moveZ ~= 0 then
-			moveZ = moveZ-0.1*math.sign(moveZ)
-		end
-
-		if (horizontalSpeed > 0 and moveX < 1) or (horizontalSpeed < 0 and moveX > -1) then
-			moveX = moveX+0.01*math.sign(horizontalSpeed)
-		end
-
-		local horizontalOrientation = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
+		local mass = player.Character.HumanoidRootPart.AssemblyMass 
+		local antiGravForceY = mass * game.Workspace.Gravity
+		local planeSpeed = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y * (player.Character.Anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
+		if (math.abs(planeSpeed)< 10) then
+			antiGravForceY *= planeSpeed/10
+		end 
+		antiGravForceY += directionY*100
 		
+		
+		-- Vertical move
+		player.Character.HumanoidRootPart.VectorForce.Force = Vector3.new(0, antiGravForceY, 0)
+
+		-- Horizontal move
 		local cc = player.Character.Anchor.CylindricalConstraint
-
-		if horizontalSpeed == 0 and math.abs(moveX) < 0.1 and cc.CurrentPosition > 0.1 then
-			moveX = -0.1*math.sign(horizontalOrientation)
+		cc.AngularVelocity = directionX/10
+		if (orientationX>0 and planeSpeed>0 or orientationX<0 and planeSpeed<0) then
+			cc.MotorMaxAngularAcceleration=0.05 -- Inverse thrust
+		else
+			cc.MotorMaxAngularAcceleration=0.01
 		end
 
-		cc.AngularVelocity = moveX	
-		cc.Velocity = moveZ		
-				
-		if moveX > 0 and horizontalOrientation > 0 then
+		-- Propeller simulation
+		local motor = player.Character.Propeller.Torque
+		if (player.Character.Propeller.AssemblyAngularVelocity.Magnitude < 30) then
+			motor.Torque = Vector3.new(0.1*math.abs(directionX), 0, 0)
+		else
+			motor.Torque = Vector3.new(0,0,0)
+		end
+
+		local vfY = player.Character.HumanoidRootPart.VectorForce.Force.Y
+		local lvX = player.Character.HumanoidRootPart.AssemblyLinearVelocity.X
+		local lvY = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Y
+		local lvZ = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Z
+		local avX = player.Character.HumanoidRootPart.AssemblyAngularVelocity.X*10
+		local avY = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y*10
+		local avZ = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Z*10
+		local mav = player.Character.Propeller.AssemblyAngularVelocity.Magnitude
+
+
+		print(string.format("dir:%+d,%+d o:%+d %s %s %s vf:%+05.0f lv:%+03.0f,%+03.0f,%+03.0f av:%+03.0f,%+03.0f,%+03.0f spd:%+03.0f mav:%+03.0f",directionX,directionY, orientationX, player.Character.HumanoidRootPart.AssemblyRootPart.Name, player.Character.Torso.AssemblyRootPart.Name, player.Character.Propeller.AssemblyRootPart.Name,  vfY, lvX,lvY,lvZ, avX,avY,avZ, planeSpeed, mav))		
+
+		if directionX > 0 and orientationX > 0 then
 			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
-			changePlayerDirection:FireServer(horizontalOrientation)
+			changePlayerDirection:FireServer(orientationX)
 		end
 		
-		if moveX < 0 and horizontalOrientation < 0 then
+		if directionX < 0 and orientationX < 0 then
 			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-			changePlayerDirection:FireServer(horizontalOrientation)
+			changePlayerDirection:FireServer(orientationX)
 		end
 		
-		-- Real vertical speed.
-		local effectiveMoveZ = player.Character.HumanoidRootPart.Velocity.y 
-		if math.abs(effectiveMoveZ) < 0.1 and moveZ < -0.1 and verticalSpeed >= 0 then
-			-- Player is blocked by the floor and wants to take off. 
-			moveZ = 0
-		end
-		if math.abs(effectiveMoveZ) < 0.1 and moveZ > 0.1 and verticalSpeed <= 0 then
-			-- Player is at max altitude and wants to land. 
-			moveZ = 0
-		end
-		  
-		-- Real horizontal speed.
-		local effectiveMoveX = math.sqrt(player.Character.HumanoidRootPart.Velocity.x^2 + player.Character.HumanoidRootPart.Velocity.z^2)
 	end
 end
 RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate)	
@@ -103,14 +110,7 @@ RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate
 
 -- Called when the player's character is added
 local function onCharacterAdded(character)
-	-- Stops player movement when respawning
-	moveX = 0
-	moveZ = 0
-	
-	-- No jump when player is on the ground
-	local humanoid = character:WaitForChild("Humanoid")
-	humanoid.JumpPower=0
-	
+
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
 	-- and is touched by something that is not: 
 	--  another part of the player
