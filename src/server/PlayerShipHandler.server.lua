@@ -57,15 +57,13 @@ local function onCharacterAdded(character)
 	local cc = Instance.new("CylindricalConstraint", anchorPart)
 	cc.Attachment0 = workspace.Center.Attachment
 	cc.Attachment1 = anchorPart.Attachment
-	cc.AngularActuatorType=1 -- Motor
-	cc.MotorMaxAngularAcceleration=0 -- Stopped
-	cc.MotorMaxTorque=2e30 -- Maximum power
-	cc.AngularVelocity=0 -- stopped
+	cc.AngularActuatorType=0 -- None
 	cc.ActuatorType=0 -- None
 	cc.LimitsEnabled=true
 	cc.LowerLimit=0 -- Min altitude
 	cc.UpperLimit=40 -- Max altitude	
 	cc.InclinationAngle = 0
+	cc.Restitution = 0 -- No elastic lower/upper limit
 	
 	-- Gives control of the ship to the player
 	rootPart:SetNetworkOwner(game.Players:GetPlayerFromCharacter(character))

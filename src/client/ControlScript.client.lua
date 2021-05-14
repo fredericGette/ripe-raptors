@@ -52,26 +52,32 @@ local function onUpdate()
 		-- orientationX [-1,+1]; left=-1; right=+1
 		local orientationX = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
 
-		local mass = player.Character.HumanoidRootPart.AssemblyMass 
-		local antiGravForceY = mass * game.Workspace.Gravity
-		local planeSpeed = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y * (player.Character.Anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
-		if (math.abs(planeSpeed)< 10) then
-			antiGravForceY *= planeSpeed/10
-		end 
-		antiGravForceY += directionY*100
-		
-		
-		-- Vertical move
-		player.Character.HumanoidRootPart.VectorForce.Force = Vector3.new(0, antiGravForceY, 0)
+		-- Calculate horizontal speed = angularVelocity.Y (radians per second) * rayon (studs)
+		local horizontalSpeed = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y * (player.Character.Anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
+		-- Calcule vertical speed = linearVelocity.Y (studs per second)
+		local verticalSpeed = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Y
+		-- Calcule total speed = (horizontal + vertical).Magnitude (studs per second)
+		local speed = Vector3.new(horizontalSpeed, verticalSpeed, 0).Magnitude
 
-		-- Horizontal move
-		local cc = player.Character.Anchor.CylindricalConstraint
-		cc.AngularVelocity = directionX/10
-		if (orientationX>0 and planeSpeed>0 or orientationX<0 and planeSpeed<0) then
-			cc.MotorMaxAngularAcceleration=0.05 -- Inverse thrust
-		else
-			cc.MotorMaxAngularAcceleration=0.01
-		end
+		-- Antigrav force
+		local mass = player.Character.HumanoidRootPart.AssemblyMass
+		local antiGravForceY = mass * game.Workspace.Gravity
+		if (math.abs(horizontalSpeed)< 10) then
+			antiGravForceY *= horizontalSpeed/10
+		end 
+		local antiGravForce = Vector3.new(0, antiGravForceY, 0)
+
+		-- Elevator force
+		local elevatorForce = Vector3.new(0, directionY*100, 0)
+		
+		-- Propulsion force
+		local propulsionForce = Vector3.new(-directionX*1000, 0, 0)
+
+		-- Air resistance = square of the speed
+		local airResistance = Vector3.new(horizontalSpeed*horizontalSpeed*math.sign(horizontalSpeed), 0, 0)
+		
+		-- Move
+		player.Character.HumanoidRootPart.VectorForce.Force = antiGravForce + elevatorForce + propulsionForce + airResistance
 
 		-- Propeller simulation
 		local motor = player.Character.Propeller.Torque
@@ -81,17 +87,19 @@ local function onUpdate()
 			motor.Torque = Vector3.new(0,0,0)
 		end
 
+		local vfX = player.Character.HumanoidRootPart.VectorForce.Force.X
 		local vfY = player.Character.HumanoidRootPart.VectorForce.Force.Y
+		local vfZ = player.Character.HumanoidRootPart.VectorForce.Force.Z
 		local lvX = player.Character.HumanoidRootPart.AssemblyLinearVelocity.X
 		local lvY = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Y
 		local lvZ = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Z
-		local avX = player.Character.HumanoidRootPart.AssemblyAngularVelocity.X*10
-		local avY = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y*10
-		local avZ = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Z*10
+		local avX = player.Character.HumanoidRootPart.AssemblyAngularVelocity.X
+		local avY = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y
+		local avZ = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Z
 		local mav = player.Character.Propeller.AssemblyAngularVelocity.Magnitude
 
 
-		print(string.format("dir:%+d,%+d o:%+d %s %s %s vf:%+05.0f lv:%+03.0f,%+03.0f,%+03.0f av:%+03.0f,%+03.0f,%+03.0f spd:%+03.0f mav:%+03.0f",directionX,directionY, orientationX, player.Character.HumanoidRootPart.AssemblyRootPart.Name, player.Character.Torso.AssemblyRootPart.Name, player.Character.Propeller.AssemblyRootPart.Name,  vfY, lvX,lvY,lvZ, avX,avY,avZ, planeSpeed, mav))		
+		print(string.format("dir:%+d,%+d o:%+d spd(H,V,T):%+03.0f,%+03.0f,%+03.0f mav:%+03.0f f:%+05.0f,%+05.0f,%+05.0f lv:%+03.0f,%+03.0f,%+03.0f av:%+03.1f,%+03.3f,%+03.1f",directionX,directionY, orientationX, horizontalSpeed,verticalSpeed,speed, mav, vfX,vfY,vfZ, lvX,lvY,lvZ, avX,avY,avZ))		
 
 		if directionX > 0 and orientationX > 0 then
 			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
@@ -110,6 +118,17 @@ RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate
 
 -- Called when the player's character is added
 local function onCharacterAdded(character)
+
+	-- Change state of the Humanoid
+	-- State "Physics" allow free movement of the Cylindrical constraint
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	-- Force state to be "Physics"
+	humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState ~= Enum.HumanoidStateType.Physics then
+			humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		end
+	end)
 
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
 	-- and is touched by something that is not: 
