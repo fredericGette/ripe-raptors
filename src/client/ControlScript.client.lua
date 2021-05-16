@@ -19,13 +19,8 @@ local changePlayerDirection = ReplicatedStorage:WaitForChild("ChangePlayerDirect
 local playerExplodes = ReplicatedStorage:WaitForChild("PlayerExplodes")
 
 -- When an other player change of direction
-local function onChangePlayerDirection(otherPlayer, direction)
-	if direction > 0 then
-		otherPlayer.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
-	end
-	if direction < 0 then
-		otherPlayer.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-	end	
+local function onChangePlayerDirection(otherPlayer, transform)
+	otherPlayer.Character.HumanoidRootPart.RootMotor.Transform = transform
 end
 changePlayerDirection.OnClientEvent:connect(onChangePlayerDirection)
 
@@ -53,62 +48,68 @@ local function onUpdate()
 		local orientationX = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
 
 		-- Calculate horizontal speed = angularVelocity.Y (radians per second) * rayon (studs)
-		local horizontalSpeed = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y * (player.Character.Anchor.Position - player.Character.HumanoidRootPart.Position).Magnitude
-		-- Calcule vertical speed = linearVelocity.Y (studs per second)
-		local verticalSpeed = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Y
-		-- Calcule total speed = (horizontal + vertical).Magnitude (studs per second)
-		local speed = Vector3.new(horizontalSpeed, verticalSpeed, 0).Magnitude
+		local horizontalSpeed = player.Character.Torso.AssemblyAngularVelocity.Y * (player.Character.Anchor.Position - player.Character.Torso.Position).Magnitude
+		-- Calcul vertical speed = linearVelocity.Y (studs per second)
+		local verticalSpeed = player.Character.Torso.AssemblyLinearVelocity.Y
+		-- Calcul total speed = (horizontal + vertical).Magnitude (studs per second)
+		local speedVector = Vector3.new(horizontalSpeed, verticalSpeed, 0)
 
-		-- Antigrav force
-		local mass = player.Character.HumanoidRootPart.AssemblyMass
-		local antiGravForceY = mass * game.Workspace.Gravity
-		if (math.abs(horizontalSpeed)< 10) then
-			antiGravForceY *= horizontalSpeed/10
+		-- Lift force
+		local mass = player.Character.Torso.AssemblyMass
+		local liftForceY = mass * game.Workspace.Gravity
+		if (math.abs(speedVector.Magnitude)< 10) then
+			liftForceY *= speedVector.Magnitude/10
 		end 
-		local antiGravForce = Vector3.new(0, antiGravForceY, 0)
-
-		-- Elevator force
-		local elevatorForce = Vector3.new(0, directionY*100, 0)
+		local liftForce = Vector3.new(0, liftForceY, 0)
 		
-		-- Propulsion force
-		local propulsionForce = Vector3.new(-directionX*1000, 0, 0)
+		-- Thrust force
+		local thrustForceX = 0
+		if (math.abs(directionX)> 0) then
+			thrustForceX = mass*25
+		end 
+		local thrustForce = Vector3.new(thrustForceX, 0, 0)
 
 		-- Air resistance = square of the speed
-		local airResistance = Vector3.new(horizontalSpeed*horizontalSpeed*math.sign(horizontalSpeed), 0, 0)
+		local airResistance = speedVector*speedVector
+		airResistance = player.Character.HumanoidRootPart.CFrame:VectorToWorldSpace(airResistance)
+		airResistance = player.Character.Torso.CFrame:VectorToObjectSpace(airResistance)
 		
 		-- Move
-		player.Character.HumanoidRootPart.VectorForce.Force = antiGravForce + elevatorForce + propulsionForce + airResistance
+		player.Character.Torso.VectorForce.Force = liftForce + thrustForce - airResistance
 
 		-- Propeller simulation
-		local motor = player.Character.Propeller.Torque
+		local propellerMotor = player.Character.Propeller.Torque
 		if (player.Character.Propeller.AssemblyAngularVelocity.Magnitude < 30) then
-			motor.Torque = Vector3.new(0.1*math.abs(directionX), 0, 0)
+			propellerMotor.Torque = Vector3.new(0.1*math.abs(directionX), 0, 0)
 		else
-			motor.Torque = Vector3.new(0,0,0)
+			propellerMotor.Torque = Vector3.new(0,0,0)
 		end
 
-		local vfX = player.Character.HumanoidRootPart.VectorForce.Force.X
-		local vfY = player.Character.HumanoidRootPart.VectorForce.Force.Y
-		local vfZ = player.Character.HumanoidRootPart.VectorForce.Force.Z
-		local lvX = player.Character.HumanoidRootPart.AssemblyLinearVelocity.X
-		local lvY = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Y
-		local lvZ = player.Character.HumanoidRootPart.AssemblyLinearVelocity.Z
-		local avX = player.Character.HumanoidRootPart.AssemblyAngularVelocity.X
-		local avY = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Y
-		local avZ = player.Character.HumanoidRootPart.AssemblyAngularVelocity.Z
-		local mav = player.Character.Propeller.AssemblyAngularVelocity.Magnitude
+		local vfX = player.Character.Torso.VectorForce.Force.X
+		local vfY = player.Character.Torso.VectorForce.Force.Y
+		local vfZ = player.Character.Torso.VectorForce.Force.Z
 
+		-- To the left: Hspeed<0, Xforce>0
+		print(string.format("dir:%+d,%+d o:%+d spd(H,V,T):%+03.0f,%+03.0f,%+03.0f f:%+05.0f,%+05.0f,%+05.0f s:%+05.0f,%+05.0f,%+05.0f ar:%+05.0f,%+05.0f,%+05.0f",directionX,directionY, orientationX, speedVector.X,speedVector.Y,speedVector.Magnitude, vfX,vfY,vfZ, speedVector.X,speedVector.Y,speedVector.Z, airResistance.X,airResistance.Y,airResistance.Z ))		
 
-		print(string.format("dir:%+d,%+d o:%+d spd(H,V,T):%+03.0f,%+03.0f,%+03.0f mav:%+03.0f f:%+05.0f,%+05.0f,%+05.0f lv:%+03.0f,%+03.0f,%+03.0f av:%+03.1f,%+03.3f,%+03.1f",directionX,directionY, orientationX, horizontalSpeed,verticalSpeed,speed, mav, vfX,vfY,vfZ, lvX,lvY,lvZ, avX,avY,avZ))		
+		if directionY == 1 then
+			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, math.pi/4, 0)
+		end 
+		if directionY == 0 then
+			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
+		end 
+		if directionY == -1 then
+			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, -math.pi/4, 0)
+		end 
 
 		if directionX > 0 and orientationX > 0 then
 			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
-			changePlayerDirection:FireServer(orientationX)
+			changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
 		end
 		
 		if directionX < 0 and orientationX < 0 then
 			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-			changePlayerDirection:FireServer(orientationX)
+			changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
 		end
 		
 	end

@@ -8,19 +8,14 @@ local changePlayerDirection = ReplicatedStorage:WaitForChild("ChangePlayerDirect
 local playerExplodes = ReplicatedStorage:WaitForChild("PlayerExplodes")
 
 -- When a player change of direction
-local function onChangePlayerDirection(player, direction)
-	if direction > 0 then
-		player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
-	end
-	if direction < 0 then
-		player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-	end	
+local function onChangePlayerDirection(player, transform)
+	player.Character.HumanoidRootPart.RootMotor.Transform = transform
 	
 	-- Replicate event to the others players.
 	local players = game.Players:GetPlayers( )
     for i = 1, #players do
         if players[i] ~= player then 
-			changePlayerDirection:FireClient(players[i], player, direction) 
+			changePlayerDirection:FireClient(players[i], player, transform) 
 		end
     end
 end
