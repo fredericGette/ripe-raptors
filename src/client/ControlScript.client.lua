@@ -34,6 +34,16 @@ explosionSound.SoundId = "http://www.roblox.com/asset/?id=691216625"
 explosionSound.Volume = 2.5
 explosionSound.Looped = false
 
+local function prettyVal(v)
+	local pv = ""
+	local sign = "+"
+	if (v < 0) then
+		sign = "-"
+	end
+	pv = string.format("\t%s\t%03.0f", sign, math.abs(v))
+	return pv
+end
+
 -- Update player speed and direction on every frame.
 local function onUpdate()	
 	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character.Anchor:FindFirstChild("CylindricalConstraint") and player.Character.HumanoidRootPart:FindFirstChild("RootMotor") then
@@ -47,6 +57,8 @@ local function onUpdate()
 		local directionY = -MoveVector.Z
 			
 		-- orientationX [-1,+1]; left=+1; right=-1
+		local x,planeAngle,planeOrientation = player.Character.HumanoidRootPart.RootMotor.Transform:toEulerAnglesXYZ()
+		print(x,prettyVal(planeAngle*100),prettyVal(planeOrientation*100))
 		local orientationX = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
 
 		-- Calculate horizontal speed = angularVelocity.Y (radians per second) * rayon (studs)
@@ -67,20 +79,21 @@ local function onUpdate()
 		projectedVector = player.Character.HumanoidRootPart.CFrame:VectorToWorldSpace(projectedVector)
 		projectedVector = player.Character.Torso.CFrame:VectorToObjectSpace(projectedVector)
 		local angle = math.atan2(projectedVector.Y, projectedVector.X)
-		print(string.format("%+03.0f,%+03.0f,%+03.0f", projectedVector.X, projectedVector.Y, math.deg(angle)))
-		if (orientationX>0 and horizontalSpeed>0 or orientationX<0 and horizontalSpeed<0) then
+		if orientationX>0 and horizontalSpeed>0 or orientationX<0 and horizontalSpeed<0 then
 			local liftForceY = mass * game.Workspace.Gravity
 			-- Under a limit speed the lift force descreases
-			if (math.abs(speedVector.Magnitude)< 10) then
+			if math.abs(speedVector.Magnitude)< 10 then
 				liftForceY *= speedVector.Magnitude/10
 			end 
+			liftForceY += -mass*speedVector.Magnitude*angle
 			-- Lift force direction is up with respect of the orientation of the plane
 			liftForce = Vector3.new(0,liftForceY,0)
 		end
+		print(prettyVal(projectedVector.X), prettyVal(projectedVector.Y), prettyVal(math.deg(angle)), prettyVal(liftForce.Y))
 		
 		-- Thrust force
 		local thrustForceX = 0
-		if (math.abs(directionX)> 0) then
+		if math.abs(directionX)> 0 then
 			thrustForceX = mass*25
 		end 
 		-- Thurst force direction is the same than the plane
@@ -109,32 +122,42 @@ local function onUpdate()
 
 		local vfX = player.Character.Torso.VectorForce.Force.X
 		local vfY = player.Character.Torso.VectorForce.Force.Y
-		local vfZ = player.Character.Torso.VectorForce.Force.Z
 
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
-		print(string.format("dir:%+d,%+d o:%+d spd(H,V,T):%+03.0f,%+03.0f,%+03.0f f:%+05.0f,%+05.0f,%+05.0f s:%+05.0f,%+05.0f,%+05.0f ar:%+05.0f,%+05.0f,%+05.0f",directionX,directionY, orientationX, speedVector.X,speedVector.Y,speedVector.Magnitude, vfX,vfY,vfZ, speedVector.X,speedVector.Y,speedVector.Z, airResistance.X,airResistance.Y,airResistance.Z ))		
-
-		if directionY == 1 then
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, math.pi/16, 0)
-		end 
-		if directionY == 0 then
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-		end 
+		print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
+		
 		if directionY == -1 then
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, -math.pi/16, 0)
+			if planeAngle > -math.pi/2 and math.round(x) == 0 then
+				planeAngle-=math.pi/160
+			else
+				x=-math.pi
+				planeOrientation = -math.pi
+				planeAngle+=math.pi/160
+			end
+
+			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, planeAngle, -planeOrientation)
+		end 
+		if directionY == 1 then
+			if planeAngle < math.pi/2 and math.round(x) == 0 then
+				planeAngle+=math.pi/160 
+			else
+				x=-math.pi
+				planeOrientation = -math.pi
+				planeAngle-=math.pi/160
+			end
+			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, planeAngle, -planeOrientation)
 		end 
 
-		if directionX > 0 and orientationX > 0 then
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, math.pi)
-			changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
-		end
+		--if directionX > 0 and orientationX > 0 then
+		--	planeOrientation = -math.pi
+		--	player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, -planeAngle, -planeOrientation)
+		--	changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
+		--end
 		
-		if directionX < 0 and orientationX < 0 then
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.Angles(0, 0, 0)
-			changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
-		end
 		
+
+
 	end
 end
 RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate)	
@@ -153,6 +176,18 @@ local function onCharacterAdded(character)
 			humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 		end
 	end)
+
+	local animSaves = character:WaitForChild("AnimSaves")
+	local asset = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flip)
+	local animation = Instance.new("Animation",workspace)
+	animation.Name = "TestAnimation"
+	animation.AnimationId = asset
+
+	local animator = humanoid:WaitForChild("Animator")
+	-- Load animation onto the animator
+	local flipAnimationTrack = animator:LoadAnimation(workspace.TestAnimation)
+	-- Play animation track
+	flipAnimationTrack:Play()
 
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
 	-- and is touched by something that is not: 
@@ -191,7 +226,7 @@ local function onCharacterAdded(character)
 		
 	-- Starts engine
 	engineSound.Parent = character.Torso
-	engineSound:Play()
+	--engineSound:Play()
 end
 
 -- Game starts
