@@ -34,6 +34,16 @@ explosionSound.SoundId = "http://www.roblox.com/asset/?id=691216625"
 explosionSound.Volume = 2.5
 explosionSound.Looped = false
 
+local States = {
+	LANDED = 1,
+	FLYING = 2,
+	TURNING = 3
+}
+
+local animationOrientationTrack = nil
+local animationFlipRightTrack = nil
+local state = States.FLYING
+
 local function prettyVal(v)
 	local pv = ""
 	local sign = "+"
@@ -42,6 +52,44 @@ local function prettyVal(v)
 	end
 	pv = string.format("\t%s\t%03.0f", sign, math.abs(v))
 	return pv
+end
+
+function updateAnimation(animationTrack, direction)
+	if animationTrack then
+		animationTrack:AdjustSpeed(0)
+		if not animationTrack.IsPlaying then
+			-- Play the animation if it is not playing
+			animationTrack:Play() 
+		end
+
+		local delta = 0.01 * animationTrack.Length
+		print("animation:",animationTrack.TimePosition, delta)
+		if direction<0 then
+			if animationTrack.TimePosition-delta>=0 then
+				animationTrack.TimePosition -= delta
+			else
+				animationTrack.TimePosition = animationTrack.Length+(animationTrack.TimePosition-delta)
+			end
+		elseif direction>0 then
+			if animationTrack.TimePosition+delta<animationTrack.Length then
+				animationTrack.TimePosition += delta
+			else
+				animationTrack.TimePosition = animationTrack.TimePosition+delta-animationTrack.Length
+			end
+		end
+
+	end
+end
+
+function freezeAnimationAtPercent(animationTrack, percentagePosition)
+	-- Set the speed to 0 to freeze the animation
+	animationTrack:AdjustSpeed(0)
+	if not animationTrack.IsPlaying then
+		-- Play the animation if it is not playing
+		animationTrack:Play() 
+	end
+	-- Jump to the desired TimePosition
+	animationTrack.TimePosition = (percentagePosition / 100) * animationTrack.Length
 end
 
 -- Update player speed and direction on every frame.
@@ -57,8 +105,6 @@ local function onUpdate()
 		local directionY = -MoveVector.Z
 			
 		-- orientationX [-1,+1]; left=+1; right=-1
-		local x,planeAngle,planeOrientation = player.Character.HumanoidRootPart.RootMotor.Transform:toEulerAnglesXYZ()
-		print(x,prettyVal(planeAngle*100),prettyVal(planeOrientation*100))
 		local orientationX = player.Character.HumanoidRootPart.RootMotor.Transform.rightVector.x
 
 		-- Calculate horizontal speed = angularVelocity.Y (radians per second) * rayon (studs)
@@ -89,7 +135,7 @@ local function onUpdate()
 			-- Lift force direction is up with respect of the orientation of the plane
 			liftForce = Vector3.new(0,liftForceY,0)
 		end
-		print(prettyVal(projectedVector.X), prettyVal(projectedVector.Y), prettyVal(math.deg(angle)), prettyVal(liftForce.Y))
+		print("lift:",prettyVal(projectedVector.X), prettyVal(projectedVector.Y), prettyVal(math.deg(angle)), prettyVal(liftForce.Y))
 		
 		-- Thrust force
 		local thrustForceX = 0
@@ -127,27 +173,18 @@ local function onUpdate()
 		-- Up: Vspeed>0, Yforce>0
 		print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
 		
-		if directionY == -1 then
-			if planeAngle > -math.pi/2 and math.round(x) == 0 then
-				planeAngle-=math.pi/160
-			else
-				x=-math.pi
-				planeOrientation = -math.pi
-				planeAngle+=math.pi/160
-			end
+		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
+		if state == States.FLYING then
+			updateAnimation(animationOrientationTrack, directionY)
+		end
 
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, planeAngle, -planeOrientation)
-		end 
-		if directionY == 1 then
-			if planeAngle < math.pi/2 and math.round(x) == 0 then
-				planeAngle+=math.pi/160 
-			else
-				x=-math.pi
-				planeOrientation = -math.pi
-				planeAngle-=math.pi/160
-			end
-			player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, planeAngle, -planeOrientation)
-		end 
+		if state == States.FLYING and directionX > 0 and orientationX < 0 then
+			state = States.TURNING
+			--animationFlipRightTrack:Play()
+			animationOrientationTrack:Stop()
+			freezeAnimationAtPercent(animationFlipRightTrack, 90)
+		end
+
 
 		--if directionX > 0 and orientationX > 0 then
 		--	planeOrientation = -math.pi
@@ -178,16 +215,25 @@ local function onCharacterAdded(character)
 	end)
 
 	local animSaves = character:WaitForChild("AnimSaves")
-	local asset = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flip)
-	local animation = Instance.new("Animation",workspace)
-	animation.Name = "TestAnimation"
-	animation.AnimationId = asset
+
+	local assetFlipRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipRight)
+	local animationFlipRight = Instance.new("Animation",workspace)
+	animationFlipRight.Name = "AnimationFlipRight"
+	animationFlipRight.AnimationId = assetFlipRight
+
+	local assetOrientation = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientation)
+	local animationOrientation = Instance.new("Animation",workspace)
+	animationOrientation.Name = "AnimationOrientation"
+	animationOrientation.AnimationId = assetOrientation
 
 	local animator = humanoid:WaitForChild("Animator")
-	-- Load animation onto the animator
-	local flipAnimationTrack = animator:LoadAnimation(workspace.TestAnimation)
-	-- Play animation track
-	flipAnimationTrack:Play()
+	-- Load animations onto the animator
+	animationOrientationTrack = animator:LoadAnimation(workspace.AnimationOrientation)
+	animationFlipRightTrack = animator:LoadAnimation(workspace.AnimationFlipRight)
+	--
+
+	state = States.FLYING
+
 
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
 	-- and is touched by something that is not: 
