@@ -34,15 +34,89 @@ explosionSound.SoundId = "http://www.roblox.com/asset/?id=691216625"
 explosionSound.Volume = 2.5
 explosionSound.Looped = false
 
-local States = {
-	LANDED = 1,
-	FLYING = 2,
-	TURNING = 3
-}
-
-local animationOrientationTrack = nil
+local animationOrientationLeftTrack = nil
+local animationOrientationRightTrack = nil
+local animationFlipLeftTrack = nil
 local animationFlipRightTrack = nil
-local state = States.FLYING
+local targetOrientationKeyFrame = "0"
+local currentOrientationKeyFrame = "0"
+
+local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
+	if not animationTrack.IsPlaying then
+		-- Play the animation if it is not playing
+		animationTrack:Play() 
+	end
+	local keyFrameTime = animationTrack:GetTimeOfKeyframe(keyframeName)
+	-- Jump to the desired TimePosition
+	animationTrack.TimePosition = keyFrameTime
+	-- Set the speed to 0 to freeze the animation
+	animationTrack:AdjustSpeed(0)
+	print("freeze",animationTrack,keyframeName)
+end
+
+local function orientationReached(animationTrack, keyframeName)
+	print("Keyframe reached:"..keyframeName)
+	if keyframeName == targetOrientationKeyFrame then
+		print("targetOrientationKeyFrame reached")
+		currentOrientationKeyFrame = targetOrientationKeyFrame
+		freezeAnimationAtKeyframe(animationTrack, currentOrientationKeyFrame)
+
+		local MoveVector = ControlModule:GetMoveVector()
+		local directionX = MoveVector.X
+
+		if (animationTrack==animationOrientationLeftTrack and directionX>0) and (keyframeName == "-180" or keyframeName == "+180") then
+			print("flip")
+			animationTrack:Stop()
+		end
+
+		if (animationTrack==animationOrientationRightTrack and directionX<0) and (keyframeName == "-180" or keyframeName == "+180") then
+			print("flip")
+			animationTrack:Stop()
+		end
+	end
+end
+
+local function orientationLeftReached(keyframeName)
+	orientationReached(animationOrientationLeftTrack, keyframeName)
+end
+
+local function orientationRightReached(keyframeName)
+	orientationReached(animationOrientationRightTrack, keyframeName)
+end
+
+local function orientationLeftStopped()
+	print("Orientation stopped")
+	animationFlipRightTrack:Play()
+end
+
+local function orientationRightStopped()
+	print("Orientation stopped")
+	animationFlipLeftTrack:Play()
+end
+
+local function flipLeftStopped()
+	print("Flip stopped")
+	currentOrientationKeyFrame="0"
+	freezeAnimationAtKeyframe(animationOrientationLeftTrack, currentOrientationKeyFrame)
+end
+
+local function flipRightStopped()
+	print("Flip stopped")
+	currentOrientationKeyFrame="0"
+	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
+end
+
+local function getTargetOrientationKeyFrame(angle)
+	if angle == 0 then
+		return "0"
+	end
+	if angle > 180 then
+		angle = angle-360
+	elseif angle < -180 then
+		angle = angle+360
+	end
+	return string.format("%+d", angle)
+end
 
 local function prettyVal(v)
 	local pv = ""
@@ -54,43 +128,7 @@ local function prettyVal(v)
 	return pv
 end
 
-function updateAnimation(animationTrack, direction)
-	if animationTrack then
-		animationTrack:AdjustSpeed(0)
-		if not animationTrack.IsPlaying then
-			-- Play the animation if it is not playing
-			animationTrack:Play() 
-		end
 
-		local delta = 0.01 * animationTrack.Length
-		print("animation:",animationTrack.TimePosition, delta)
-		if direction<0 then
-			if animationTrack.TimePosition-delta>=0 then
-				animationTrack.TimePosition -= delta
-			else
-				animationTrack.TimePosition = animationTrack.Length+(animationTrack.TimePosition-delta)
-			end
-		elseif direction>0 then
-			if animationTrack.TimePosition+delta<animationTrack.Length then
-				animationTrack.TimePosition += delta
-			else
-				animationTrack.TimePosition = animationTrack.TimePosition+delta-animationTrack.Length
-			end
-		end
-
-	end
-end
-
-function freezeAnimationAtPercent(animationTrack, percentagePosition)
-	-- Set the speed to 0 to freeze the animation
-	animationTrack:AdjustSpeed(0)
-	if not animationTrack.IsPlaying then
-		-- Play the animation if it is not playing
-		animationTrack:Play() 
-	end
-	-- Jump to the desired TimePosition
-	animationTrack.TimePosition = (percentagePosition / 100) * animationTrack.Length
-end
 
 -- Update player speed and direction on every frame.
 local function onUpdate()	
@@ -135,7 +173,7 @@ local function onUpdate()
 			-- Lift force direction is up with respect of the orientation of the plane
 			liftForce = Vector3.new(0,liftForceY,0)
 		end
-		print("lift:",prettyVal(projectedVector.X), prettyVal(projectedVector.Y), prettyVal(math.deg(angle)), prettyVal(liftForce.Y))
+		--print("lift:",prettyVal(projectedVector.X), prettyVal(projectedVector.Y), prettyVal(math.deg(angle)), prettyVal(liftForce.Y))
 		
 		-- Thrust force
 		local thrustForceX = 0
@@ -171,29 +209,42 @@ local function onUpdate()
 
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
-		print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
+		--print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
 		
 		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
-		if state == States.FLYING then
-			updateAnimation(animationOrientationTrack, directionY)
+		-- Animation mus have the "loop" flag.
+		-- And the name of the keyframes must be the angle of the orientation 
+		-- Negatives are down
+		-- Positives are up
+		-- Zero is horizontal
+		-- Example: "-45", "0", "+45"
+		if directionY > 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+45)
+			animationOrientationLeftTrack:AdjustSpeed(0.5)
+			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if state == States.FLYING and directionX > 0 and orientationX < 0 then
-			state = States.TURNING
-			--animationFlipRightTrack:Play()
-			animationOrientationTrack:Stop()
-			freezeAnimationAtPercent(animationFlipRightTrack, 90)
+		if directionY < 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-45)
+			animationOrientationLeftTrack:AdjustSpeed(-0.5)
+			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
+		if directionY > 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+45)
+			animationOrientationRightTrack:AdjustSpeed(0.5)
+			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
+		end
 
-		--if directionX > 0 and orientationX > 0 then
-		--	planeOrientation = -math.pi
-		--	player.Character.HumanoidRootPart.RootMotor.Transform = CFrame.fromEulerAnglesXYZ(x, -planeAngle, -planeOrientation)
-		--	changePlayerDirection:FireServer(player.Character.HumanoidRootPart.RootMotor.Transform)
-		--end
-		
-		
-
+		if directionY < 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-45)
+			animationOrientationRightTrack:AdjustSpeed(-0.5)
+			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
+		end
 
 	end
 end
@@ -216,23 +267,46 @@ local function onCharacterAdded(character)
 
 	local animSaves = character:WaitForChild("AnimSaves")
 
+	local assetFlipLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipLeft)
+	local animationFlipLeft = Instance.new("Animation",workspace)
+	animationFlipLeft.Name = "AnimationFlipLeft"
+	animationFlipLeft.AnimationId = assetFlipLeft
+
 	local assetFlipRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipRight)
 	local animationFlipRight = Instance.new("Animation",workspace)
 	animationFlipRight.Name = "AnimationFlipRight"
 	animationFlipRight.AnimationId = assetFlipRight
 
-	local assetOrientation = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientation)
-	local animationOrientation = Instance.new("Animation",workspace)
-	animationOrientation.Name = "AnimationOrientation"
-	animationOrientation.AnimationId = assetOrientation
+	local assetOrientationLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationLeft)
+	local animationOrientationLeft = Instance.new("Animation",workspace)
+	animationOrientationLeft.Name = "AnimationOrientationLeft"
+	animationOrientationLeft.AnimationId = assetOrientationLeft
+
+	local assetOrientationRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationRight)
+	local animationOrientationRight = Instance.new("Animation",workspace)
+	animationOrientationRight.Name = "AnimationOrientationRight"
+	animationOrientationRight.AnimationId = assetOrientationRight
 
 	local animator = humanoid:WaitForChild("Animator")
 	-- Load animations onto the animator
-	animationOrientationTrack = animator:LoadAnimation(workspace.AnimationOrientation)
+	animationOrientationLeftTrack = animator:LoadAnimation(workspace.AnimationOrientationLeft)
+	animationOrientationRightTrack = animator:LoadAnimation(workspace.AnimationOrientationRight)
+	animationFlipLeftTrack = animator:LoadAnimation(workspace.AnimationFlipLeft)
 	animationFlipRightTrack = animator:LoadAnimation(workspace.AnimationFlipRight)
-	--
+	
+	animationOrientationLeftTrack.KeyframeReached:Connect(orientationLeftReached)
+	animationOrientationRightTrack.KeyframeReached:Connect(orientationRightReached)
 
-	state = States.FLYING
+	animationOrientationLeftTrack.Stopped:Connect(orientationLeftStopped)
+	animationOrientationRightTrack.Stopped:Connect(orientationRightStopped)
+
+	animationFlipRightTrack.Stopped:Connect(flipRightStopped)
+	animationFlipLeftTrack.Stopped:Connect(flipLeftStopped)
+
+	while animationOrientationLeftTrack.Length == 0 do
+		wait()
+	end
+	freezeAnimationAtKeyframe(animationOrientationLeftTrack, "0")
 
 
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
