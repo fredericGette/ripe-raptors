@@ -115,7 +115,10 @@ local function getTargetOrientationKeyFrame(angle)
 	elseif angle < -180 then
 		angle = angle+360
 	end
-	return string.format("%+d", angle)
+	if angle == math.round(angle) then
+		return string.format("%+.f", angle)
+	end
+	return string.format("%+.1f", angle)
 end
 
 local function prettyVal(v)
@@ -209,7 +212,7 @@ local function onUpdate()
 
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
-		--print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
+		-- print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
 		
 		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
 		-- Animation mus have the "loop" flag.
@@ -220,28 +223,28 @@ local function onUpdate()
 		-- Example: "-45", "0", "+45"
 		if directionY > 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
-			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+45)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationLeftTrack:AdjustSpeed(0.5)
 			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
 		if directionY < 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
-			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-45)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationLeftTrack:AdjustSpeed(-0.5)
 			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
 		if directionY > 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
-			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+45)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationRightTrack:AdjustSpeed(0.5)
 			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
 		if directionY < 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
-			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-45)
+			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationRightTrack:AdjustSpeed(-0.5)
 			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
