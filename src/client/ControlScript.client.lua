@@ -40,6 +40,9 @@ local animationFlipLeftTrack = nil
 local animationFlipRightTrack = nil
 local targetOrientationKeyFrame = "0"
 local currentOrientationKeyFrame = "0"
+local turningRight=false
+local turningLeft=false
+local ground=true
 
 local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
 	if not animationTrack.IsPlaying then
@@ -61,15 +64,12 @@ local function orientationReached(animationTrack, keyframeName)
 		currentOrientationKeyFrame = targetOrientationKeyFrame
 		freezeAnimationAtKeyframe(animationTrack, currentOrientationKeyFrame)
 
-		local MoveVector = ControlModule:GetMoveVector()
-		local directionX = MoveVector.X
-
-		if (animationTrack==animationOrientationLeftTrack and directionX>0) and (keyframeName == "-180" or keyframeName == "+180") then
+		if turningRight and (keyframeName == "-180" or keyframeName == "+180") then
 			print("flip")
 			animationTrack:Stop()
 		end
 
-		if (animationTrack==animationOrientationRightTrack and directionX<0) and (keyframeName == "-180" or keyframeName == "+180") then
+		if turningLeft and (keyframeName == "-180" or keyframeName == "+180") then
 			print("flip")
 			animationTrack:Stop()
 		end
@@ -98,12 +98,14 @@ local function flipLeftStopped()
 	print("Flip stopped")
 	currentOrientationKeyFrame="0"
 	freezeAnimationAtKeyframe(animationOrientationLeftTrack, currentOrientationKeyFrame)
+	turningLeft = false
 end
 
 local function flipRightStopped()
 	print("Flip stopped")
 	currentOrientationKeyFrame="0"
 	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
+	turningRight = false
 end
 
 local function getTargetOrientationKeyFrame(angle)
@@ -249,6 +251,34 @@ local function onUpdate()
 			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
+		if directionX>0 and animationOrientationLeftTrack.IsPlaying and not turningRight then
+			turningRight=true
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			if currentAngle < 0 then
+				targetOrientationKeyFrame = "-180"
+				animationOrientationLeftTrack:AdjustSpeed(-0.5)
+			else
+				targetOrientationKeyFrame = "+180"
+				animationOrientationLeftTrack:AdjustSpeed(0.5)
+			end
+		end
+
+		if directionX<0 and animationOrientationRightTrack.IsPlaying and not turningLeft then
+			turningLeft=true
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			if currentAngle < 0 then
+				targetOrientationKeyFrame = "-180"
+				animationOrientationRightTrack:AdjustSpeed(-0.5)
+			else
+				targetOrientationKeyFrame = "+180"
+				animationOrientationRightTrack:AdjustSpeed(0.5)
+			end
+		end
+
+		local raycastResult = workspace:Raycast(player.Character.Torso.Position, -50*player.Character.Torso.CFrame.UpVector)
+
+		print("ground:",ground, raycastResult)
+
 	end
 end
 RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate)	
@@ -346,6 +376,7 @@ local function onCharacterAdded(character)
 			end
 		end
 	end)
+
 		
 	-- Starts engine
 	engineSound.Parent = character.Torso
