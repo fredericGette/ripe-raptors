@@ -15,14 +15,7 @@ local PlayerModule = require(PlayerScripts:WaitForChild("PlayerModule"))
 local ControlModule = PlayerModule:GetControls()
 
 -- Variables for RemoteEvents (see the PlayerShipRemotes Script)
-local changePlayerDirection = ReplicatedStorage:WaitForChild("ChangePlayerDirection")
 local playerExplodes = ReplicatedStorage:WaitForChild("PlayerExplodes")
-
--- When an other player change of direction
-local function onChangePlayerDirection(otherPlayer, transform)
-	otherPlayer.Character.HumanoidRootPart.RootMotor.Transform = transform
-end
-changePlayerDirection.OnClientEvent:connect(onChangePlayerDirection)
 
 local engineSound = Instance.new("Sound")
 engineSound.SoundId = "http://www.roblox.com/asset/?id=578468221"
@@ -38,11 +31,13 @@ local animationOrientationLeftTrack = nil
 local animationOrientationRightTrack = nil
 local animationFlipLeftTrack = nil
 local animationFlipRightTrack = nil
-local targetOrientationKeyFrame = "0"
-local currentOrientationKeyFrame = "0"
+local targetOrientationKeyFrame = "+22.5"
+local currentOrientationKeyFrame = "+22.5"
 local turningRight=false
 local turningLeft=false
 local ground=true
+local grounding=false
+local takingOff=false
 
 local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
 	if not animationTrack.IsPlaying then
@@ -72,6 +67,14 @@ local function orientationReached(animationTrack, keyframeName)
 		if turningLeft and (keyframeName == "-180" or keyframeName == "+180") then
 			print("flip")
 			animationTrack:Stop()
+		end
+
+		if grounding then
+			grounding = false
+		end
+
+		if takingOff then
+			takingOff = false
 		end
 	end
 end
@@ -123,6 +126,17 @@ local function getTargetOrientationKeyFrame(angle)
 	return string.format("%+.1f", angle)
 end
 
+local function checkGround(plane)
+	ground = false
+	local raycastResult = workspace:Raycast(plane.Position, -1.1*plane.CFrame.UpVector)
+	if raycastResult then
+		local isRoad = raycastResult.Instance:GetAttribute("road")
+		if isRoad then
+			ground = true
+		end
+	end
+end
+
 local function prettyVal(v)
 	local pv = ""
 	local sign = "+"
@@ -162,19 +176,27 @@ local function onUpdate()
 		-- Lift force
 		local mass = player.Character.Torso.AssemblyMass
 		local liftForce = Vector3.new(0,0,0)
-		-- Air must flow from the front to the rear of the plane
-		-- Calcul the angle between the air flow (speec vector) and the plane (torso)
-		local projectedVector = speedVector * Vector3.new(1, 1, 0)
-		projectedVector = player.Character.HumanoidRootPart.CFrame:VectorToWorldSpace(projectedVector)
-		projectedVector = player.Character.Torso.CFrame:VectorToObjectSpace(projectedVector)
-		local angle = math.atan2(projectedVector.Y, projectedVector.X)
+		
 		if orientationX>0 and horizontalSpeed>0 or orientationX<0 and horizontalSpeed<0 then
 			local liftForceY = mass * game.Workspace.Gravity
 			-- Under a limit speed the lift force descreases
 			if math.abs(speedVector.Magnitude)< 10 then
 				liftForceY *= speedVector.Magnitude/10
 			end 
+			
+			-- Air must flow from the front to the rear of the plane
+			-- Calcul the angle between the air flow (speed vector) and the plane (torso)
+			local projectedVector = speedVector * Vector3.new(1, 1, 0)
+			projectedVector = player.Character.HumanoidRootPart.CFrame:VectorToWorldSpace(projectedVector)
+			projectedVector = player.Character.Torso.CFrame:VectorToObjectSpace(projectedVector)
+			local angle = math.atan2(projectedVector.Y, projectedVector.X)
 			liftForceY += -mass*speedVector.Magnitude*angle
+
+			if ground and currentOrientationKeyFrame == "0" and math.abs(speedVector.Magnitude)>10 and directionY > 0 then
+				-- Boost to take off
+				liftForceY += mass*game.Workspace.Gravity/2
+			end
+
 			-- Lift force direction is up with respect of the orientation of the plane
 			liftForce = Vector3.new(0,liftForceY,0)
 		end
@@ -184,6 +206,13 @@ local function onUpdate()
 		local thrustForceX = 0
 		if math.abs(directionX)> 0 then
 			thrustForceX = mass*25
+			if not engineSound.IsPlaying then
+				engineSound:Play()
+			end
+		else
+			if engineSound.IsPlaying then
+				engineSound:Stop()
+			end
 		end 
 		-- Thurst force direction is the same than the plane
 		local thrustForce = Vector3.new(thrustForceX, 0, 0)
@@ -223,35 +252,35 @@ local function onUpdate()
 		-- Positives are up
 		-- Zero is horizontal
 		-- Example: "-45", "0", "+45"
-		if directionY > 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+		if not ground and directionY > 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationLeftTrack:AdjustSpeed(0.5)
 			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if directionY < 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+		if not ground and directionY < 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationLeftTrack:AdjustSpeed(-0.5)
 			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if directionY > 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+		if not ground and directionY > 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationRightTrack:AdjustSpeed(0.5)
 			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if directionY < 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+		if not ground and directionY < 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationRightTrack:AdjustSpeed(-0.5)
 			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if directionX>0 and animationOrientationLeftTrack.IsPlaying and not turningRight then
+		if not ground and directionX>0 and animationOrientationLeftTrack.IsPlaying and not turningRight then
 			turningRight=true
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			if currentAngle < 0 then
@@ -263,7 +292,7 @@ local function onUpdate()
 			end
 		end
 
-		if directionX<0 and animationOrientationRightTrack.IsPlaying and not turningLeft then
+		if not ground and directionX<0 and animationOrientationRightTrack.IsPlaying and not turningLeft then
 			turningLeft=true
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			if currentAngle < 0 then
@@ -275,9 +304,44 @@ local function onUpdate()
 			end
 		end
 
-		local raycastResult = workspace:Raycast(player.Character.Torso.Position, -50*player.Character.Torso.CFrame.UpVector)
+		if ground and not grounding and liftForce.Y < mass*game.Workspace.Gravity/2 and currentOrientationKeyFrame ~= "+22.5" and animationOrientationLeftTrack.IsPlaying then
+			grounding = true
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			if currentAngle <= 0 then
+				animationOrientationLeftTrack:AdjustSpeed(0.5)
+			else
+				animationOrientationLeftTrack:AdjustSpeed(-0.5)
+			end
+			targetOrientationKeyFrame = "+22.5"
+		end
 
-		print("ground:",ground, raycastResult)
+		if ground and not grounding and liftForce.Y < mass*game.Workspace.Gravity/2 and currentOrientationKeyFrame ~= "+22.5" and animationOrientationRightTrack.IsPlaying then
+			grounding = true
+			local currentAngle = tonumber(currentOrientationKeyFrame)
+			if currentAngle <= 0 then
+				animationOrientationRightTrack:AdjustSpeed(0.5)
+			else
+				animationOrientationRightTrack:AdjustSpeed(-0.5)
+			end
+			targetOrientationKeyFrame = "+22.5"
+		end
+
+		if ground and not takingOff and liftForce.Y >= mass*game.Workspace.Gravity/2 and currentOrientationKeyFrame ~= "0" and animationOrientationLeftTrack.IsPlaying then
+			takingOff = true
+			-- currentAngle must be +22.5
+			animationOrientationLeftTrack:AdjustSpeed(-0.5)
+			targetOrientationKeyFrame = "0"
+		end
+
+		if ground and not takingOff and liftForce.Y >= mass*game.Workspace.Gravity/2 and currentOrientationKeyFrame ~= "0" and animationOrientationRightTrack.IsPlaying then
+			takingOff = true
+			-- currentAngle must be +22.5
+			animationOrientationRightTrack:AdjustSpeed(-0.5)
+			targetOrientationKeyFrame = "0"
+		end
+
+		checkGround(player.Character.Torso)
+		
 
 	end
 end
@@ -339,7 +403,7 @@ local function onCharacterAdded(character)
 	while animationOrientationLeftTrack.Length == 0 do
 		wait()
 	end
-	freezeAnimationAtKeyframe(animationOrientationLeftTrack, "0")
+	freezeAnimationAtKeyframe(animationOrientationLeftTrack, "+22.5")
 
 
 	-- Destroy player when a humanoid's part (head, torso, ...) is not protected by a ForceField
@@ -365,14 +429,14 @@ local function onCharacterAdded(character)
 
 				wait(0.2) -- synchro sound with explosion
 				
-				--local explosion = Instance.new("Explosion")
-				--explosion.Position = character.Torso.Position
-				--explosion.Parent = workspace
+				local explosion = Instance.new("Explosion")
+				explosion.Position = character.Torso.Position
+				explosion.Parent = workspace
 				
 				-- Sends an event to the server to destroy near players
-				-- playerExplodes:FireServer(explosion.Position)
+				 playerExplodes:FireServer(explosion.Position)
 				-- The Explosion is enough to destroy the player
-				--humanoid:TakeDamage(humanoid.Health)
+				humanoid:TakeDamage(humanoid.Health)
 			end
 		end
 	end)

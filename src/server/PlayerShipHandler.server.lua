@@ -1,24 +1,8 @@
 --This script handles plane behavior on the server-side of the game
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- RemoteEvent for when the client change the direction of the local player.
-local changePlayerDirection = ReplicatedStorage:WaitForChild("ChangePlayerDirection")
-
 -- RemoteEvent for when a player explodes.
 local playerExplodes = ReplicatedStorage:WaitForChild("PlayerExplodes")
-
--- When a player change of direction
-local function onChangePlayerDirection(player, transform)
-	player.Character.HumanoidRootPart.RootMotor.Transform = transform
-	
-	-- Replicate event to the others players.
-	local players = game.Players:GetPlayers( )
-    for i = 1, #players do
-        if players[i] ~= player then 
-			changePlayerDirection:FireClient(players[i], player, transform) 
-		end
-    end
-end
 
 -- When a player explodes
 local function onPlayerExplodes(player, position)
@@ -28,7 +12,6 @@ local function onPlayerExplodes(player, position)
 end
 
 -- Set up event bindings
-changePlayerDirection.OnServerEvent:Connect(onChangePlayerDirection)
 playerExplodes.OnServerEvent:Connect(onPlayerExplodes)
 
 -- Called when the character is added
