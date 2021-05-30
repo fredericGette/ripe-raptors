@@ -404,35 +404,41 @@ local function onCharacterAdded(character)
 
 	local animSaves = character:WaitForChild("AnimSaves")
 
-	local assetFlipLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipLeft)
+	--local assetFlipLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipLeft)
 	local animationFlipLeft = Instance.new("Animation",workspace)
 	animationFlipLeft.Name = "AnimationFlipLeft"
-	animationFlipLeft.AnimationId = assetFlipLeft
+	--animationFlipLeft.AnimationId = assetFlipLeft
+	animationFlipLeft.AnimationId = "rbxassetid://6887394830"
 
-	local assetFlipRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipRight)
+	--local assetFlipRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.flipRight)
 	local animationFlipRight = Instance.new("Animation",workspace)
 	animationFlipRight.Name = "AnimationFlipRight"
-	animationFlipRight.AnimationId = assetFlipRight
+	--animationFlipRight.AnimationId = assetFlipRight
+	animationFlipRight.AnimationId = "rbxassetid://6887404755"
 
-	local assetTurnLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnLeft)
+	--local assetTurnLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnLeft)
 	local animationTurnLeft = Instance.new("Animation",workspace)
 	animationTurnLeft.Name = "AnimationTurnLeft"
-	animationTurnLeft.AnimationId = assetTurnLeft
+	--animationTurnLeft.AnimationId = assetTurnLeft
+	animationTurnLeft.AnimationId = "rbxassetid://6887410128"
 
-	local assetTurnRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnRight)
+	--local assetTurnRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnRight)
 	local animationTurnRight = Instance.new("Animation",workspace)
 	animationTurnRight.Name = "AnimationTurnRight"
-	animationTurnRight.AnimationId = assetTurnRight
+	--animationTurnRight.AnimationId = assetTurnRight
+	animationTurnRight.AnimationId = "rbxassetid://6887415225"
 
-	local assetOrientationLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationLeft)
+	--local assetOrientationLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationLeft)
 	local animationOrientationLeft = Instance.new("Animation",workspace)
 	animationOrientationLeft.Name = "AnimationOrientationLeft"
-	animationOrientationLeft.AnimationId = assetOrientationLeft
+	--animationOrientationLeft.AnimationId = assetOrientationLeft
+	animationOrientationLeft.AnimationId = "rbxassetid://6887418719"
 
-	local assetOrientationRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationRight)
+	--local assetOrientationRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationRight)
 	local animationOrientationRight = Instance.new("Animation",workspace)
 	animationOrientationRight.Name = "AnimationOrientationRight"
-	animationOrientationRight.AnimationId = assetOrientationRight
+	--animationOrientationRight.AnimationId = assetOrientationRight
+	animationOrientationRight.AnimationId = "rbxassetid://6887422186"
 
 	local animator = humanoid:WaitForChild("Animator")
 	-- Load animations onto the animator
