@@ -31,6 +31,8 @@ local animationOrientationLeftTrack = nil
 local animationOrientationRightTrack = nil
 local animationFlipLeftTrack = nil
 local animationFlipRightTrack = nil
+local animationTurnLeftTrack = nil
+local animationTurnRightTrack = nil
 local targetOrientationKeyFrame = "+22.5"
 local currentOrientationKeyFrame = "+22.5"
 local turningRight=false
@@ -89,12 +91,20 @@ end
 
 local function orientationLeftStopped()
 	print("Orientation stopped")
-	animationFlipRightTrack:Play()
+	if ground then
+		animationTurnRightTrack:Play()
+	else
+		animationFlipRightTrack:Play()
+	end
 end
 
 local function orientationRightStopped()
 	print("Orientation stopped")
-	animationFlipLeftTrack:Play()
+	if ground then
+		animationTurnLeftTrack:Play()
+	else
+		animationFlipLeftTrack:Play()
+	end
 end
 
 local function flipLeftStopped()
@@ -107,6 +117,20 @@ end
 local function flipRightStopped()
 	print("Flip stopped")
 	currentOrientationKeyFrame="0"
+	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
+	turningRight = false
+end
+
+local function turnLeftStopped()
+	print("Turn stopped")
+	currentOrientationKeyFrame="+22.5"
+	freezeAnimationAtKeyframe(animationOrientationLeftTrack, currentOrientationKeyFrame)
+	turningLeft = false
+end
+
+local function turnRightStopped()
+	print("Turn stopped")
+	currentOrientationKeyFrame="+22.5"
 	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
 	turningRight = false
 end
@@ -147,7 +171,13 @@ local function prettyVal(v)
 	return pv
 end
 
-
+local function engineRun(mass)
+	local thrustForceX = mass*25
+	if not engineSound.IsPlaying then
+		engineSound:Play()
+	end
+	return thrustForceX
+end
 
 -- Update player speed and direction on every frame.
 local function onUpdate()	
@@ -204,16 +234,16 @@ local function onUpdate()
 		
 		-- Thrust force
 		local thrustForceX = 0
-		if math.abs(directionX)> 0 then
-			thrustForceX = mass*25
-			if not engineSound.IsPlaying then
-				engineSound:Play()
-			end
-		else
-			if engineSound.IsPlaying then
-				engineSound:Stop()
-			end
-		end 
+		if ground and directionX<0 and (animationOrientationLeftTrack.IsPlaying or animationTurnLeftTrack.IsPlaying) then
+			thrustForceX = engineRun(mass)
+		elseif ground and directionX>0 and (animationOrientationRightTrack.IsPlaying or animationTurnRightTrack.IsPlaying) then
+			thrustForceX = engineRun(mass)
+		elseif not ground and directionX ~= 0 then
+			thrustForceX = engineRun(mass)
+		elseif engineSound.IsPlaying then
+			engineSound:Stop()
+		end
+
 		-- Thurst force direction is the same than the plane
 		local thrustForce = Vector3.new(thrustForceX, 0, 0)
 
@@ -340,6 +370,16 @@ local function onUpdate()
 			targetOrientationKeyFrame = "0"
 		end
 
+		if ground and directionX>0 and animationOrientationLeftTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningRight then
+			turningRight=true
+			animationOrientationLeftTrack:Stop()
+		end
+
+		if ground and directionX<0 and animationOrientationRightTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningLeft then
+			turningLeft=true
+			animationOrientationRightTrack:Stop()
+		end
+
 		checkGround(player.Character.Torso)
 		
 
@@ -374,6 +414,16 @@ local function onCharacterAdded(character)
 	animationFlipRight.Name = "AnimationFlipRight"
 	animationFlipRight.AnimationId = assetFlipRight
 
+	local assetTurnLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnLeft)
+	local animationTurnLeft = Instance.new("Animation",workspace)
+	animationTurnLeft.Name = "AnimationTurnLeft"
+	animationTurnLeft.AnimationId = assetTurnLeft
+
+	local assetTurnRight = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.turnRight)
+	local animationTurnRight = Instance.new("Animation",workspace)
+	animationTurnRight.Name = "AnimationTurnRight"
+	animationTurnRight.AnimationId = assetTurnRight
+
 	local assetOrientationLeft = game:GetService("KeyframeSequenceProvider"):RegisterKeyframeSequence(animSaves.orientationLeft)
 	local animationOrientationLeft = Instance.new("Animation",workspace)
 	animationOrientationLeft.Name = "AnimationOrientationLeft"
@@ -390,6 +440,8 @@ local function onCharacterAdded(character)
 	animationOrientationRightTrack = animator:LoadAnimation(workspace.AnimationOrientationRight)
 	animationFlipLeftTrack = animator:LoadAnimation(workspace.AnimationFlipLeft)
 	animationFlipRightTrack = animator:LoadAnimation(workspace.AnimationFlipRight)
+	animationTurnLeftTrack = animator:LoadAnimation(workspace.AnimationTurnLeft)
+	animationTurnRightTrack = animator:LoadAnimation(workspace.AnimationTurnRight)
 	
 	animationOrientationLeftTrack.KeyframeReached:Connect(orientationLeftReached)
 	animationOrientationRightTrack.KeyframeReached:Connect(orientationRightReached)
@@ -399,6 +451,9 @@ local function onCharacterAdded(character)
 
 	animationFlipRightTrack.Stopped:Connect(flipRightStopped)
 	animationFlipLeftTrack.Stopped:Connect(flipLeftStopped)
+
+	animationTurnRightTrack.Stopped:Connect(turnRightStopped)
+	animationTurnLeftTrack.Stopped:Connect(turnLeftStopped)
 
 	while animationOrientationLeftTrack.Length == 0 do
 		wait()
@@ -419,11 +474,11 @@ local function onCharacterAdded(character)
 			not character:FindFirstChildOfClass("ForceField")
 		then			
 			-- Caculates the force of the impact: velocity of the player minus velocity of the touched object
-			local playerVelocity = character.HumanoidRootPart.Velocity
-			local objectVelocity = touchingPart.Velocity
+			local playerVelocity = character.Torso.AssemblyLinearVelocity
+			local objectVelocity = touchingPart.AssemblyLinearVelocity
 			local energy = playerVelocity - objectVelocity
 			print(playerVelocity.Magnitude," ",objectVelocity.Magnitude," ",energy.Magnitude)
-			if energy.Magnitude > 0 then
+			if energy.Magnitude > 4 then
 				explosionSound.Parent = character
 				explosionSound:Play() 
 
@@ -434,7 +489,7 @@ local function onCharacterAdded(character)
 				explosion.Parent = workspace
 				
 				-- Sends an event to the server to destroy near players
-				 playerExplodes:FireServer(explosion.Position)
+				playerExplodes:FireServer(explosion.Position)
 				-- The Explosion is enough to destroy the player
 				humanoid:TakeDamage(humanoid.Health)
 			end
