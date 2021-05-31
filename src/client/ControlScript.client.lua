@@ -51,23 +51,23 @@ local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
 	animationTrack.TimePosition = keyFrameTime
 	-- Set the speed to 0 to freeze the animation
 	animationTrack:AdjustSpeed(0)
-	print("freeze",animationTrack,keyframeName)
+	--print("freeze",animationTrack,keyframeName)
 end
 
 local function orientationReached(animationTrack, keyframeName)
 	print("Keyframe reached:"..keyframeName)
 	if keyframeName == targetOrientationKeyFrame then
-		print("targetOrientationKeyFrame reached")
+		--print("targetOrientationKeyFrame reached")
 		currentOrientationKeyFrame = targetOrientationKeyFrame
 		freezeAnimationAtKeyframe(animationTrack, currentOrientationKeyFrame)
 
 		if turningRight and (keyframeName == "-180" or keyframeName == "+180") then
-			print("flip")
+			--print("flip")
 			animationTrack:Stop()
 		end
 
 		if turningLeft and (keyframeName == "-180" or keyframeName == "+180") then
-			print("flip")
+			--print("flip")
 			animationTrack:Stop()
 		end
 
@@ -90,7 +90,7 @@ local function orientationRightReached(keyframeName)
 end
 
 local function orientationLeftStopped()
-	print("Orientation stopped")
+	--print("Orientation stopped")
 	if ground then
 		animationTurnRightTrack:Play()
 	else
@@ -99,7 +99,7 @@ local function orientationLeftStopped()
 end
 
 local function orientationRightStopped()
-	print("Orientation stopped")
+	--print("Orientation stopped")
 	if ground then
 		animationTurnLeftTrack:Play()
 	else
@@ -108,28 +108,28 @@ local function orientationRightStopped()
 end
 
 local function flipLeftStopped()
-	print("Flip stopped")
+	--print("Flip stopped")
 	currentOrientationKeyFrame="0"
 	freezeAnimationAtKeyframe(animationOrientationLeftTrack, currentOrientationKeyFrame)
 	turningLeft = false
 end
 
 local function flipRightStopped()
-	print("Flip stopped")
+	--print("Flip stopped")
 	currentOrientationKeyFrame="0"
 	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
 	turningRight = false
 end
 
 local function turnLeftStopped()
-	print("Turn stopped")
+	--print("Turn stopped")
 	currentOrientationKeyFrame="+22.5"
 	freezeAnimationAtKeyframe(animationOrientationLeftTrack, currentOrientationKeyFrame)
 	turningLeft = false
 end
 
 local function turnRightStopped()
-	print("Turn stopped")
+	--print("Turn stopped")
 	currentOrientationKeyFrame="+22.5"
 	freezeAnimationAtKeyframe(animationOrientationRightTrack, currentOrientationKeyFrame)
 	turningRight = false
@@ -161,13 +161,31 @@ local function checkGround(plane)
 	end
 end
 
+local function checkUp(directionY)
+	local currentAngle = tonumber(currentOrientationKeyFrame)
+	if directionY >= 1 then return true end
+	if directionY >= 0.5 and directionY < 1 and currentAngle < 45 then return true end
+	if directionY >= 0.2 and directionY < 0.5 and currentAngle < 22.5 then return true end
+	if directionY > 0 and directionY < 0.2 and currentAngle < 0 then return true end
+	return false
+end
+
+local function checkDown(directionY)
+	local currentAngle = tonumber(currentOrientationKeyFrame)
+	if directionY <= -1 then return true end
+	if directionY <= -0.5 and directionY > -1 and currentAngle > -45 then return true end
+	if directionY <= -0.2 and directionY > -0.5 and currentAngle > -22.5 then return true end
+	if directionY < 0 and directionY > -0.2 and currentAngle > 0 then return true end
+	return false
+end
+
 local function prettyVal(v)
 	local pv = ""
 	local sign = "+"
 	if (v < 0) then
 		sign = "-"
 	end
-	pv = string.format("\t%s\t%03.0f", sign, math.abs(v))
+	pv = string.format("\t%s\t%03.2f", sign, math.abs(v))
 	return pv
 end
 
@@ -273,7 +291,7 @@ local function onUpdate()
 
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
-		-- print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
+		print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
 		
 		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
 		-- Animation mus have the "loop" flag.
@@ -282,35 +300,35 @@ local function onUpdate()
 		-- Positives are up
 		-- Zero is horizontal
 		-- Example: "-45", "0", "+45"
-		if not ground and directionY > 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+		if not ground and checkUp(directionY) and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationLeftTrack:AdjustSpeed(0.5)
-			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
+			--print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if not ground and directionY < 0 and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
+		if not ground and checkDown(directionY) and animationOrientationLeftTrack.IsPlaying and animationOrientationLeftTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationLeftTrack:AdjustSpeed(-0.5)
-			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
+			--print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if not ground and directionY > 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+		if not ground and checkUp(directionY) and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle+22.5)
 			animationOrientationRightTrack:AdjustSpeed(0.5)
-			print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
+			--print("^", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if not ground and directionY < 0 and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
+		if not ground and checkDown(directionY) and animationOrientationRightTrack.IsPlaying and animationOrientationRightTrack.Speed == 0 then
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			targetOrientationKeyFrame=getTargetOrientationKeyFrame(currentAngle-22.5)
 			animationOrientationRightTrack:AdjustSpeed(-0.5)
-			print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
+			--print("v", currentOrientationKeyFrame, targetOrientationKeyFrame)
 		end
 
-		if not ground and directionX>0 and animationOrientationLeftTrack.IsPlaying and not turningRight then
+		if not ground and directionX>0.5 and animationOrientationLeftTrack.IsPlaying and not turningRight then
 			turningRight=true
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			if currentAngle < 0 then
@@ -322,7 +340,7 @@ local function onUpdate()
 			end
 		end
 
-		if not ground and directionX<0 and animationOrientationRightTrack.IsPlaying and not turningLeft then
+		if not ground and directionX<-0.5 and animationOrientationRightTrack.IsPlaying and not turningLeft then
 			turningLeft=true
 			local currentAngle = tonumber(currentOrientationKeyFrame)
 			if currentAngle < 0 then
@@ -370,12 +388,12 @@ local function onUpdate()
 			targetOrientationKeyFrame = "0"
 		end
 
-		if ground and directionX>0 and animationOrientationLeftTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningRight then
+		if ground and directionX>0.5 and animationOrientationLeftTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningRight then
 			turningRight=true
 			animationOrientationLeftTrack:Stop()
 		end
 
-		if ground and directionX<0 and animationOrientationRightTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningLeft then
+		if ground and directionX<-0.5 and animationOrientationRightTrack.IsPlaying and currentOrientationKeyFrame=="+22.5" and not turningLeft then
 			turningLeft=true
 			animationOrientationRightTrack:Stop()
 		end
