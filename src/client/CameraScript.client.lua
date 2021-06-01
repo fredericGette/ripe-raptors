@@ -19,7 +19,8 @@ local function onRenderStep()
 	local character = localPlayer.Character
 	if character then
 		local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-		if humanoidRootPart then  
+		local humanoid = character:WaitForChild("Humanoid")
+		if humanoidRootPart and humanoid.Health > 0 then  
 
 			local viewPortsize = camera.ViewportSize
 			local ratio = viewPortsize.x / viewPortsize.y
