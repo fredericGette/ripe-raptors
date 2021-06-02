@@ -55,7 +55,7 @@ local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
 end
 
 local function orientationReached(animationTrack, keyframeName)
-	print("Keyframe reached:"..keyframeName)
+	-- print("Keyframe reached:"..keyframeName)
 	if keyframeName == targetOrientationKeyFrame then
 		--print("targetOrientationKeyFrame reached")
 		currentOrientationKeyFrame = targetOrientationKeyFrame
@@ -164,18 +164,18 @@ end
 local function checkUp(directionY)
 	local currentAngle = tonumber(currentOrientationKeyFrame)
 	if directionY >= 1 then return true end
-	if directionY >= 0.5 and directionY < 1 and currentAngle < 45 then return true end
-	if directionY >= 0.2 and directionY < 0.5 and currentAngle < 22.5 then return true end
-	if directionY > 0 and directionY < 0.2 and currentAngle < 0 then return true end
+	if directionY >= 0.6 and directionY < 1 and currentAngle < 45 then return true end
+	if directionY >= 0.3 and directionY < 0.6 and currentAngle < 22.5 then return true end
+	if directionY > 0 and directionY < 0.3 and currentAngle < 0 then return true end
 	return false
 end
 
 local function checkDown(directionY)
 	local currentAngle = tonumber(currentOrientationKeyFrame)
 	if directionY <= -1 then return true end
-	if directionY <= -0.5 and directionY > -1 and currentAngle > -45 then return true end
-	if directionY <= -0.2 and directionY > -0.5 and currentAngle > -22.5 then return true end
-	if directionY < 0 and directionY > -0.2 and currentAngle > 0 then return true end
+	if directionY <= -0.6 and directionY > -1 and currentAngle > -45 then return true end
+	if directionY <= -0.3 and directionY > -0.6 and currentAngle > -22.5 then return true end
+	if directionY < 0 and directionY > -0.3 and currentAngle > 0 then return true end
 	return false
 end
 
@@ -245,6 +245,14 @@ local function onUpdate()
 				liftForceY += mass*game.Workspace.Gravity/2
 			end
 
+			if not ground and currentOrientationKeyFrame == "0" and directionY > 0.15 and directionY < 0.3 then
+				liftForceY += mass*game.Workspace.Gravity/4
+			end
+
+			if not ground and currentOrientationKeyFrame == "0" and directionY < -0.15 and directionY > -0.3 then
+				liftForceY -= mass*game.Workspace.Gravity/4
+			end
+
 			-- Lift force direction is up with respect of the orientation of the plane
 			liftForce = Vector3.new(0,liftForceY,0)
 		end
@@ -256,7 +264,7 @@ local function onUpdate()
 			thrustForceX = engineRun(mass)
 		elseif ground and directionX>0 and (animationOrientationRightTrack.IsPlaying or animationTurnRightTrack.IsPlaying) then
 			thrustForceX = engineRun(mass)
-		elseif not ground and directionX ~= 0 then
+		elseif not ground and math.abs(directionX) > 0.5 then
 			thrustForceX = engineRun(mass)
 		elseif engineSound.IsPlaying then
 			engineSound:Stop()
@@ -291,7 +299,7 @@ local function onUpdate()
 
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
-		print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
+		-- print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
 		
 		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
 		-- Animation mus have the "loop" flag.
@@ -406,6 +414,43 @@ end
 RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate)	
 
 
+local function touchPlane(touchingPart)  
+	-- Filter any instances of the model coming in contact with itself
+	if touchingPart:IsDescendantOf(player.Character) then return end
+
+	local touchingParts = touchingPart:GetTouchingParts() --gets a table of touching parts
+	for _, v in pairs(touchingParts) do -- loops through all the touching parts
+    	-- print(touchingPart.Name, v.Name)
+	end
+
+	if  
+		touchingPart.Name ~= "Bullet" 
+		and
+		not player.Character:FindFirstChildOfClass("ForceField")
+	then			
+		-- Caculates the force of the impact: velocity of the player minus velocity of the touched object
+		local playerVelocity = player.Character.Torso.AssemblyLinearVelocity
+		local objectVelocity = touchingPart.AssemblyLinearVelocity
+		local energy = playerVelocity - objectVelocity
+		print(touchingPart.Name, playerVelocity.Magnitude," ",objectVelocity.Magnitude," ",energy.Magnitude)
+		if energy.Magnitude > 7 and player.Character.Humanoid.Health > 0 then
+			explosionSound.Parent = player.Character
+			explosionSound:Play() 
+
+			wait(0.2) -- synchro sound with explosion
+			
+			local explosion = Instance.new("Explosion")
+			explosion.Position = player.Character.Torso.Position
+			explosion.Parent = workspace
+			
+			-- Sends an event to the server to destroy near players
+			playerExplodes:FireServer(explosion.Position)
+			-- The Explosion is enough to destroy the player
+			player.Character.Humanoid:TakeDamage(player.Character.Humanoid.Health)
+		end
+	end
+end
+
 -- Called when the player's character is added
 local function onCharacterAdded(character)
 
@@ -489,36 +534,12 @@ local function onCharacterAdded(character)
 	-- and is touched by something that is not: 
 	--  another part of the player
 	--  a bullet (damages taken by bullets are managed by BulletHandler)
-	character.Torso.Touched:Connect(function(touchingPart, humanoidPart)  
-		if 
-			touchingPart.Parent.Name ~= player.Name 
-			and 
-			touchingPart.Name ~= "Bullet" 
-			and
-			not character:FindFirstChildOfClass("ForceField")
-		then			
-			-- Caculates the force of the impact: velocity of the player minus velocity of the touched object
-			local playerVelocity = character.Torso.AssemblyLinearVelocity
-			local objectVelocity = touchingPart.AssemblyLinearVelocity
-			local energy = playerVelocity - objectVelocity
-			print(playerVelocity.Magnitude," ",objectVelocity.Magnitude," ",energy.Magnitude)
-			if energy.Magnitude > 4 then
-				explosionSound.Parent = character
-				explosionSound:Play() 
-
-				wait(0.2) -- synchro sound with explosion
-				
-				local explosion = Instance.new("Explosion")
-				explosion.Position = character.Torso.Position
-				explosion.Parent = workspace
-				
-				-- Sends an event to the server to destroy near players
-				playerExplodes:FireServer(explosion.Position)
-				-- The Explosion is enough to destroy the player
-				humanoid:TakeDamage(humanoid.Health)
-			end
+	for _, child in pairs(character:GetChildren()) do
+		if child:IsA("BasePart") and not child:GetAttribute("scaffold") then
+			print("connect:",child.Name)
+			child.Touched:Connect(touchPlane)
 		end
-	end)
+	end
 
 		
 	-- Starts engine
