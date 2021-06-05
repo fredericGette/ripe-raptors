@@ -460,6 +460,19 @@ end
 -- Called when the player's character is added
 local function onCharacterAdded(character)
 
+
+	targetOrientationKeyFrame = "+22.5"
+	currentOrientationKeyFrame = "+22.5"
+	turningRight=false
+	turningLeft=false
+	ground=true
+	grounding=false
+	takingOff=false
+
+	if animationOrientationLeftTrack then
+		print(animationOrientationLeftTrack.IsPlaying, animationOrientationRightTrack.IsPlaying, animationFlipLeftTrack.IsPlaying, animationFlipRightTrack.IsPlaying, animationTurnLeftTrack.IsPlaying, animationTurnRightTrack.IsPlaying, targetOrientationKeyFrame, currentOrientationKeyFrame, turningRight, turningLeft, ground, grounding, takingOff)
+	end
+
 	-- Change state of the Humanoid
 	-- State "Physics" allow free movement of the Cylindrical constraint
 	local humanoid = character:WaitForChild("Humanoid")
