@@ -40,6 +40,7 @@ local turningLeft=false
 local ground=true
 local grounding=false
 local takingOff=false
+local speedVector = nil
 
 local function freezeAnimationAtKeyframe(animationTrack, keyframeName)
 	if not animationTrack.IsPlaying then
@@ -219,7 +220,7 @@ local function onUpdate()
 		-- Calcul vertical speed = linearVelocity.Y (studs per second)
 		local verticalSpeed = player.Character.Torso.AssemblyLinearVelocity.Y
 		-- Calcul total speed = (horizontal + vertical).Magnitude (studs per second)
-		local speedVector = Vector3.new(horizontalSpeed, verticalSpeed, 0)
+		speedVector = Vector3.new(horizontalSpeed, verticalSpeed, 0)
 
 		-- Lift force
 		local mass = player.Character.Torso.AssemblyMass
@@ -414,26 +415,31 @@ end
 RunService:BindToRenderStep("Control", Enum.RenderPriority.Input.Value, onUpdate)	
 
 
-local function touchPlane(touchingPart)  
+local function touchPlane(touchingPart, planePart)  
 	-- Filter any instances of the model coming in contact with itself
 	if touchingPart:IsDescendantOf(player.Character) then return end
-
-	local touchingParts = touchingPart:GetTouchingParts() --gets a table of touching parts
-	for _, v in pairs(touchingParts) do -- loops through all the touching parts
-    	-- print(touchingPart.Name, v.Name)
-	end
 
 	if  
 		touchingPart.Name ~= "Bullet" 
 		and
 		not player.Character:FindFirstChildOfClass("ForceField")
-	then			
+	then	
+		local resistance = 0	
+		if planePart:GetAttribute("tough") then 
+			resistance = 40
+		elseif ground then
+			if planePart:GetAttribute("fragile") then
+				resistance = 0
+			else
+				resistance = 40
+			end
+		end
+		
 		-- Caculates the force of the impact: velocity of the player minus velocity of the touched object
-		local playerVelocity = player.Character.Torso.AssemblyLinearVelocity
 		local objectVelocity = touchingPart.AssemblyLinearVelocity
-		local energy = playerVelocity - objectVelocity
-		print(touchingPart.Name, playerVelocity.Magnitude," ",objectVelocity.Magnitude," ",energy.Magnitude)
-		if energy.Magnitude > 7 and player.Character.Humanoid.Health > 0 then
+		local energy = speedVector - objectVelocity
+		if energy.Magnitude > resistance and player.Character.Humanoid.Health > 0 then
+			--print(touchingPart.Name.." touches "..planePart.Name.."   speed:"..prettyVal(speedVector.Magnitude).."   obstacle:"..prettyVal(objectVelocity.Magnitude).."   energy:"..prettyVal(energy.Magnitude).."   resistance:"..resistance)
 			explosionSound.Parent = player.Character
 			explosionSound:Play() 
 
@@ -536,8 +542,10 @@ local function onCharacterAdded(character)
 	--  a bullet (damages taken by bullets are managed by BulletHandler)
 	for _, child in pairs(character:GetChildren()) do
 		if child:IsA("BasePart") and not child:GetAttribute("scaffold") then
-			print("connect:",child.Name)
-			child.Touched:Connect(touchPlane)
+			--print("connect:",child.Name)
+			child.Touched:Connect(function(touchingPart) 
+				touchPlane(touchingPart, child)
+			end)
 		end
 	end
 
