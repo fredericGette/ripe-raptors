@@ -49,7 +49,7 @@ launchProjectile.OnServerInvoke = function(player, cFrame, impulse)
 	-- Set up touched event for the projectile
 	projectile.Touched:Connect(function(hit)
 		-- if hit.Parent:FindFirstChild("Humanoid") and hit.Parent.Name ~= player.Name then
-						print(hit.Name," ",hit.Parent.Name)
+		-- print(hit.Name," ",hit.Parent.Name)
 		if hit.Parent.Name ~= player.Name then
 			projectile:Destroy()
 			if hit.Parent:FindFirstChild("Humanoid") then 

@@ -24,7 +24,7 @@ engineSound.Looped = true
 
 local explosionSound = Instance.new("Sound")
 explosionSound.SoundId = "http://www.roblox.com/asset/?id=691216625"
-explosionSound.Volume = 2.5
+explosionSound.Volume = 1.5
 explosionSound.Looped = false
 
 local animationOrientationLeftTrack = nil
@@ -439,7 +439,7 @@ local function touchPlane(touchingPart, planePart)
 		local objectVelocity = touchingPart.AssemblyLinearVelocity
 		local energy = speedVector - objectVelocity
 		if energy.Magnitude > resistance and player.Character.Humanoid.Health > 0 then
-			--print(touchingPart.Name.." touches "..planePart.Name.."   speed:"..prettyVal(speedVector.Magnitude).."   obstacle:"..prettyVal(objectVelocity.Magnitude).."   energy:"..prettyVal(energy.Magnitude).."   resistance:"..resistance)
+			print(touchingPart.Name.." touches "..planePart.Name.."   speed:"..prettyVal(speedVector.Magnitude).."   obstacle:"..prettyVal(objectVelocity.Magnitude).."   energy:"..prettyVal(energy.Magnitude).."   resistance:"..resistance)
 			explosionSound.Parent = player.Character
 			explosionSound:Play() 
 
@@ -469,9 +469,9 @@ local function onCharacterAdded(character)
 	grounding=false
 	takingOff=false
 
-	if animationOrientationLeftTrack then
-		print(animationOrientationLeftTrack.IsPlaying, animationOrientationRightTrack.IsPlaying, animationFlipLeftTrack.IsPlaying, animationFlipRightTrack.IsPlaying, animationTurnLeftTrack.IsPlaying, animationTurnRightTrack.IsPlaying, targetOrientationKeyFrame, currentOrientationKeyFrame, turningRight, turningLeft, ground, grounding, takingOff)
-	end
+	--if animationOrientationLeftTrack then
+		--print(animationOrientationLeftTrack.IsPlaying, animationOrientationRightTrack.IsPlaying, animationFlipLeftTrack.IsPlaying, animationFlipRightTrack.IsPlaying, animationTurnLeftTrack.IsPlaying, animationTurnRightTrack.IsPlaying, targetOrientationKeyFrame, currentOrientationKeyFrame, turningRight, turningLeft, ground, grounding, takingOff)
+	--end
 
 	-- Change state of the Humanoid
 	-- State "Physics" allow free movement of the Cylindrical constraint

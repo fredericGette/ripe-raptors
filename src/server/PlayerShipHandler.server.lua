@@ -39,7 +39,7 @@ local function onCharacterAdded(character)
 	cc.ActuatorType=0 -- None
 	cc.LimitsEnabled=true
 	cc.LowerLimit=-10 -- Min altitude
-	cc.UpperLimit=40 -- Max altitude	
+	cc.UpperLimit=80 -- Max altitude	
 	cc.InclinationAngle = 0
 	cc.Restitution = 0 -- No elastic lower/upper limit
 	

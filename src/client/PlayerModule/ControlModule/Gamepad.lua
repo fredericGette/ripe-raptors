@@ -141,7 +141,8 @@ function Gamepad:BindContextActions()
 	end
 	
 	ContextActionService:BindActivate(self.activeGamepad, Enum.KeyCode.ButtonR2)
-	ContextActionService:BindAction("jumpAction",handleJumpAction, false, Enum.KeyCode.ButtonA)
+	-- ripe-raptors: disable jumpAction because we want to fire instead.
+	-- ContextActionService:BindAction("jumpAction",handleJumpAction, false, Enum.KeyCode.ButtonA)
 	ContextActionService:BindAction("moveThumbstick",handleThumbstickInput, false, Enum.KeyCode.Thumbstick1)
 	
 	return true

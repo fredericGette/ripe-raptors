@@ -84,14 +84,14 @@ end
 -- the server needs to hear is a response
 ping.OnClientInvoke = function() end
 
-local function onFireGamepad()
+local function onFireGamepad(actionName, inputState, inputObj)
 	print("Fire Gamepad")
-	onLaunch()
+	onLaunch(actionName, inputState, inputObj)
 end
 
 local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui") -- Wait PlayerGui to create touch button
 ContextActionService:BindAction("Fire", onLaunch, true, Enum.KeyCode.Space)
-ContextActionService:BindAction("FireGamepad", onFireGamepad, false, Enum.KeyCode.ButtonR2)
+ContextActionService:BindAction("FireGamepad", onFireGamepad, false, Enum.KeyCode.ButtonA)
 local fireButton = ContextActionService:GetButton("Fire")
 if fireButton then -- we have a touch button
 	local contextActionGui = playerGui:FindFirstChild("ContextActionGui")
