@@ -26,7 +26,7 @@ local function onRenderStep()
 			local ratio = viewPortsize.x / viewPortsize.y
 			ratio = math.exp(ratio)
 			local cameraOffset = CFrame.new(0, 0, -CAMERA_DISTANCE/ratio)
-			game.Lighting.FogEnd=CAMERA_DISTANCE/ratio+250
+			game.Lighting.FogEnd=CAMERA_DISTANCE/ratio+150
 			game.Lighting.FogStart=CAMERA_DISTANCE/ratio+50
 
 			
