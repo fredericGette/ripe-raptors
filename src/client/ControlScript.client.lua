@@ -267,7 +267,10 @@ local function onUpdate()
 			thrustForceX = engineRun(mass)
 		elseif not ground and math.abs(directionX) > 0.5 then
 			thrustForceX = engineRun(mass)
+			if directionX > 0 then player:SetAttribute("motion", "right") end
+			if directionX < 0 then player:SetAttribute("motion", "left") end
 		elseif engineSound.IsPlaying then
+			player:SetAttribute("motion", "stop")
 			engineSound:Stop()
 		end
 

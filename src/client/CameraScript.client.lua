@@ -10,8 +10,10 @@ local imageLabels = {}
 
 -- Enables the camera to do what this script says
 camera.CameraType = Enum.CameraType.Scriptable
-camera.FieldOfView = 70
-local CAMERA_DISTANCE = 250
+camera.FieldOfView = 80 -- 80-100
+local CAMERA_DISTANCE = 150
+
+local cameraDx = 0
 
 -- Called every time the screen refreshes
 local function onRenderStep()
@@ -22,18 +24,24 @@ local function onRenderStep()
 		local humanoid = character:WaitForChild("Humanoid")
 		if humanoidRootPart and humanoid.Health > 0 then  
 
+			if localPlayer:GetAttribute("motion") == "stop" and cameraDx > 0 then cameraDx -= 0.1 end
+			if localPlayer:GetAttribute("motion") == "stop" and cameraDx < 0 then cameraDx += 0.1 end
+			if localPlayer:GetAttribute("motion") == "left" and cameraDx > -1 then cameraDx -= 0.1 end
+			if localPlayer:GetAttribute("motion") == "right" and cameraDx < 1 then cameraDx += 0.1 end
+
+
 			local viewPortsize = camera.ViewportSize
 			local ratio = viewPortsize.x / viewPortsize.y
 			ratio = math.exp(ratio)
-			local cameraOffset = CFrame.new(0, 0, -CAMERA_DISTANCE/ratio)
+			ratio = 15
+			local cameraOffset = CFrame.new(cameraDx, 0, -CAMERA_DISTANCE/ratio)
 			game.Lighting.FogEnd=CAMERA_DISTANCE/ratio+150
 			game.Lighting.FogStart=CAMERA_DISTANCE/ratio+50
 
-			
 			-- make the camera follow the player
-			camera.CFrame = humanoidRootPart.CFrame:toWorldSpace(cameraOffset)* CFrame.Angles(0, math.pi, 0)
-			--camera.CFrame = CFrame.new(humanoidRootPart.Position+Vector3.new(0,20,0), humanoidRootPart.Position) -- top view
-			
+			local cameraPosition = humanoidRootPart.CFrame:toWorldSpace(cameraOffset).Position
+			camera.CFrame = CFrame.new(cameraPosition, humanoidRootPart.CFrame.Position)
+
 			-- Update the focus of the camera to follow the character
 			camera.Focus = humanoidRootPart.CFrame			
 		end
