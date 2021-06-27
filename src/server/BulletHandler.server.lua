@@ -17,34 +17,47 @@ local currentPing = {}
 
 -- This function is called when the client launches a projectile
 launchProjectile.OnServerInvoke = function(player, cFrame, impulse)
+	
 	-- Consume a metal
 	player.leaderstats.Metal.Value = player.leaderstats.Metal.Value -1
 	
 	-- Make a new projectile
 	local projectile = projectileTemplate:Clone()
-	
-	-- Calculate where the projectile should be based on the latency
-	-- of the player who launched it
-	local ping = 0
-	if currentPing[player] then
-		ping = currentPing[player]
-	end
-	local offset = ping * impulse * 1.5
-	projectile.CFrame = cFrame + offset
-	
-	-- Zero out gravity on the projectile so it doesn't fall through the ground
-	local mass = projectile:GetMass()
-	projectile.VectorForce.Force = Vector3.new(0, 1, 0) * mass * game.Workspace.Gravity
-	
-		
+
 	-- Put the projectile in the workspace and make sure the server is the owner
 	projectile.Parent = game.Workspace
 	projectile:SetNetworkOwner(nil)
 
+	-- Calculate where the projectile should be based on the latency
+	-- of the player who launched it
+	local ping = 0
+	if currentPing[player] then
+		--ping = currentPing[player]
+	end
+	local offset = ping * impulse * 1.5
+	projectile.CFrame = cFrame + offset
+
+	projectile.Anchor.WeldConstraint.Enabled = false
+	projectile.Anchor.CFrame = CFrame.new(game.Workspace.Center.Position.x, projectile.Anchor.Position.y, game.Workspace.Center.Position.z)
+	
+	local cc = Instance.new("CylindricalConstraint", projectile.Anchor)
+	cc.Attachment0 = game.Workspace.Center.Attachment
+	cc.Attachment1 = projectile.Anchor.Attachment
+	cc.AngularActuatorType=0 -- None
+	cc.ActuatorType=0 -- None	
+	cc.InclinationAngle = 0	
+
+	projectile.Anchor.WeldConstraint.Enabled = true
+
+	-- Zero out gravity on the projectile so it doesn't fall through the ground
+	local mass = projectile.AssemblyMass
+	projectile.VectorForce.Force = Vector3.new(0, 1, 0) * mass * game.Workspace.Gravity
+
+	print("impulse:",impulse)
 	-- Apply impulse (the projectile must be in the workspace)
 	projectile:ApplyImpulse(impulse)
 	
-	Debris:AddItem(projectile, 1)
+	Debris:AddItem(projectile, 2)
 	
 	-- Set up touched event for the projectile
 	projectile.Touched:Connect(function(hit)
@@ -56,7 +69,7 @@ launchProjectile.OnServerInvoke = function(player, cFrame, impulse)
 				hit.Parent.Humanoid:TakeDamage(10)
 				--print("Damage:",player.Name, " ", hit.Name, " ", hit.Parent.Name);
 			end
-		else
+		--else
 			--print("No damage:",player.Name, " ", hit.Name, " ", hit.Parent.Name);
 		end
 	end)

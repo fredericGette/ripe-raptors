@@ -1,7 +1,7 @@
 -- This script handles blaster events on the client-side of the game
 
 -- How fast the projectile moves
-local PROJECTILE_SPEED = 3
+local PROJECTILE_SPEED = 50
 -- How often a projectile can be made on mouse clicks (in seconds)
 local LAUNCH_COOLDOWN = 0.1
  
@@ -18,6 +18,7 @@ local ping = ReplicatedStorage:WaitForChild("Ping")
  
 -- Variable to store the basic projectile object
 local projectileTemplate = ReplicatedStorage:WaitForChild("Bullet")
+
 -- Variable for the player object
 local player = Players.LocalPlayer
  
@@ -46,23 +47,39 @@ local function onLaunch(actionName, inputState, inputObj)
 		
 		-- Create a new projectile
 		local projectile = projectileTemplate:Clone()
-		local playerCFrame = player.Character.Head.CFrame -- Bullets are shooted by the cockpit (head).
-		local direction = playerCFrame.RightVector -- Forward vector
-		local random = math.random()/5 -- Randomise a little the direction of the bullets.
-		direction = direction - playerDirection * playerCFrame.LookVector*random -- Bullets are slighlty aimed at the inside of the world.
-		projectile.CFrame = playerCFrame * CFrame.Angles (0,playerDirection * math.pi/4*random,0) -- Rotate the bullet in accordance to its direction.
 
 		-- Put the projectile in the workspace in order for ApplyImpluse to work.
 		projectile.Parent = game.Workspace
-		projectile:ApplyImpulse(direction * PROJECTILE_SPEED)
+
+		local playerCFrame = player.Character.Head.CFrame -- Bullets are shooted by the cockpit (head).
+		local direction = playerCFrame.RightVector -- Forward vector
+
+		projectile.CFrame = playerCFrame
 		
+		projectile.Anchor.WeldConstraint.Enabled = false
+		projectile.Anchor.CFrame = CFrame.new(game.Workspace.Center.Position.x, projectile.Anchor.Position.y, game.Workspace.Center.Position.z)
+	
+		local cc = Instance.new("CylindricalConstraint", projectile.Anchor)
+		cc.Attachment0 = game.Workspace.Center.Attachment
+		cc.Attachment1 = projectile.Anchor.Attachment
+		cc.AngularActuatorType=0 -- None
+		cc.ActuatorType=0 -- None	
+		cc.InclinationAngle = 0	
+
+		projectile.Anchor.WeldConstraint.Enabled = true
+
 		-- Zero out gravity on the projectile so it doesn't fall through the ground
-		local mass = projectile:GetMass()
+		local mass = projectile.AssemblyMass
 		projectile.VectorForce.Force = Vector3.new(0, 1, 0) * mass * game.Workspace.Gravity
+
+		print("impulse:",direction * PROJECTILE_SPEED)
+		-- Apply impulse (the projectile must be in the workspace)
+		projectile:ApplyImpulse(direction * PROJECTILE_SPEED)
 		
 		bulletSound:Play()
 		
 		-- Tell the server to create a new projectile and send it back to us
+		print(direction * PROJECTILE_SPEED)
 		local serverProjectile = launchProjectile:InvokeServer(projectile.CFrame, direction * PROJECTILE_SPEED)
 		-- Hide the server copy of the projectile
 		serverProjectile.LocalTransparencyModifier = 1
@@ -76,7 +93,7 @@ local function onLaunch(actionName, inputState, inputObj)
 		end)
 		
 		-- Life time of the projectile
-		Debris:AddItem(projectile, 1)
+		Debris:AddItem(projectile, 2)
 	end
 end
  
