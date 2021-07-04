@@ -267,10 +267,10 @@ local function onUpdate()
 			thrustForceX = engineRun(mass)
 		elseif not ground and math.abs(directionX) > 0.5 then
 			thrustForceX = engineRun(mass)
-			if directionX > 0 then player:SetAttribute("motion", "right") end
-			if directionX < 0 then player:SetAttribute("motion", "left") end
+			if directionX > 0 then player:SetAttribute("motionX", "right") end
+			if directionX < 0 then player:SetAttribute("motionX", "left") end
 		elseif engineSound.IsPlaying then
-			player:SetAttribute("motion", "stop")
+			player:SetAttribute("motionX", "stop")
 			engineSound:Stop()
 		end
 
@@ -304,7 +304,15 @@ local function onUpdate()
 		-- To the left: Hspeed>0, Xforce>0
 		-- Up: Vspeed>0, Yforce>0
 		-- print("dir:",prettyVal(directionX),prettyVal(directionY)," o:",prettyVal(orientationX)," spd(H,V,T):",prettyVal(speedVector.X),prettyVal(speedVector.Y),prettyVal(speedVector.Magnitude)," f:",prettyVal(vfX),prettyVal(vfY)," ar:",prettyVal(airResistance.X),prettyVal(airResistance.Y))		
-		
+
+		if not ground and tonumber(currentOrientationKeyFrame) < 0 then
+			player:SetAttribute("motionY", "down")
+		elseif not ground and tonumber(currentOrientationKeyFrame) > 0 then
+			player:SetAttribute("motionY", "up")
+		else
+			player:SetAttribute("motionY", "stop")
+		end
+
 		-- Use animation with jump to timeposition (see https://developer.roblox.com/en-us/api-reference/function/AnimationTrack/Play)
 		-- Animation mus have the "loop" flag.
 		-- And the name of the keyframes must be the angle of the orientation 

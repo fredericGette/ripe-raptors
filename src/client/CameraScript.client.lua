@@ -10,10 +10,12 @@ local imageLabels = {}
 
 -- Enables the camera to do what this script says
 camera.CameraType = Enum.CameraType.Scriptable
-camera.FieldOfView = 80 -- 80-100
-local CAMERA_DISTANCE = 150
+camera.FieldOfView = 100
+game.Lighting.FogEnd=150
+game.Lighting.FogStart=80
 
-local cameraDx = 0
+local cameraPositionX = 0
+local cameraPositionY = 0
 
 -- Called every time the screen refreshes
 local function onRenderStep()
@@ -24,19 +26,17 @@ local function onRenderStep()
 		local humanoid = character:WaitForChild("Humanoid")
 		if humanoidRootPart and humanoid.Health > 0 then  
 
-			if localPlayer:GetAttribute("motion") == "stop" and cameraDx > 0 then cameraDx -= 0.1 end
-			if localPlayer:GetAttribute("motion") == "stop" and cameraDx < 0 then cameraDx += 0.1 end
-			if localPlayer:GetAttribute("motion") == "left" and cameraDx > -1 then cameraDx -= 0.1 end
-			if localPlayer:GetAttribute("motion") == "right" and cameraDx < 1 then cameraDx += 0.1 end
+			if localPlayer:GetAttribute("motionX") == "stop" and cameraPositionX > 0 then cameraPositionX -= 0.1*(math.abs(cameraPositionX)+0.1) end
+			if localPlayer:GetAttribute("motionX") == "stop" and cameraPositionX < 0 then cameraPositionX += 0.1*(math.abs(cameraPositionX)+0.1) end
+			if localPlayer:GetAttribute("motionX") == "left" and cameraPositionX > -1 then cameraPositionX -= 0.1*(math.abs(cameraPositionX)+0.1) end
+			if localPlayer:GetAttribute("motionX") == "right" and cameraPositionX < 1 then cameraPositionX += 0.1*(math.abs(cameraPositionX)+0.1) end
 
+			if localPlayer:GetAttribute("motionY") == "stop" and cameraPositionY > 0 then cameraPositionY -= 0.1 end
+			if localPlayer:GetAttribute("motionY") == "stop" and cameraPositionY < 0 then cameraPositionY += 0.1 end
+			if localPlayer:GetAttribute("motionY") == "up" and cameraPositionY > -2 then cameraPositionY -= 0.1 end
+			if localPlayer:GetAttribute("motionY") == "down" and cameraPositionY < 2 then cameraPositionY += 0.1 end
 
-			local viewPortsize = camera.ViewportSize
-			local ratio = viewPortsize.x / viewPortsize.y
-			ratio = math.exp(ratio)
-			ratio = 15
-			local cameraOffset = CFrame.new(cameraDx, 0, -CAMERA_DISTANCE/ratio)
-			game.Lighting.FogEnd=CAMERA_DISTANCE/ratio+150
-			game.Lighting.FogStart=CAMERA_DISTANCE/ratio+50
+			local cameraOffset = CFrame.new(cameraPositionX, cameraPositionY, -15)
 
 			-- make the camera follow the player
 			local cameraPosition = humanoidRootPart.CFrame:toWorldSpace(cameraOffset).Position
